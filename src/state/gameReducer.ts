@@ -6,7 +6,7 @@ import type {
   NumbersRoundState,
   ConundrumRoundState,
 } from '../types/game';
-import { ROUND_ORDER, TIMER_DURATION, NUMBERS_TIMER_DURATION } from '../types/game';
+import { ROUND_ORDER, TIMER_DURATION } from '../types/game';
 import { selectNumbers, generateTarget } from '../engine/letterPicker';
 import { CONUNDRUM_WORDS } from '../data/conundrums';
 import { shuffle } from '../utils/shuffle';
@@ -132,12 +132,11 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       const roundType = state.mode === 'fullgame'
         ? ROUND_ORDER[state.currentRound]
         : state.freeplayType!;
-      const duration = roundType === 'numbers' ? NUMBERS_TIMER_DURATION : TIMER_DURATION;
       return {
         ...state,
         phase: 'picking',
         timerRunning: false,
-        timeRemaining: duration,
+        timeRemaining: TIMER_DURATION,
         currentRoundState: createRoundState(roundType, state.currentRound),
       };
     }
@@ -172,7 +171,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         ...state,
         phase: 'playing',
         timerRunning: true,
-        timeRemaining: NUMBERS_TIMER_DURATION,
+        timeRemaining: TIMER_DURATION,
         currentRoundState: {
           ...state.currentRoundState,
           numbers,
@@ -195,7 +194,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         ...state,
         phase: allPicked ? 'playing' : 'picking',
         timerRunning: allPicked,
-        timeRemaining: allPicked ? NUMBERS_TIMER_DURATION : state.timeRemaining,
+        timeRemaining: allPicked ? TIMER_DURATION : state.timeRemaining,
         currentRoundState: {
           ...numRound,
           numbers: newNumbers,

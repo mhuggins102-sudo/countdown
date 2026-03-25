@@ -1,8 +1,8 @@
 import { useGame } from '../../hooks/useGame';
 import { Button } from '../shared/Button';
 
-export function GameOverScreen() {
-  const { state, dispatch } = useGame();
+export function GameOverScreen({ onPlayAgain }: { onPlayAgain: () => void }) {
+  const { state } = useGame();
   const playerWon = state.playerTotalScore > state.aiTotalScore;
   const tied = state.playerTotalScore === state.aiTotalScore;
 
@@ -67,7 +67,7 @@ export function GameOverScreen() {
       </div>
 
       <div className="flex gap-4">
-        <Button variant="gold" size="lg" onClick={() => dispatch({ type: 'RETURN_TO_MENU' })}>
+        <Button variant="gold" size="lg" onClick={onPlayAgain}>
           Play Again
         </Button>
       </div>

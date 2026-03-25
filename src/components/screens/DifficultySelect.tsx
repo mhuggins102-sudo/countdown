@@ -2,7 +2,7 @@ import { useGame } from '../../hooks/useGame';
 import { Button } from '../shared/Button';
 import type { Difficulty } from '../../types/game';
 
-export function DifficultySelect() {
+export function DifficultySelect({ onBack }: { onBack: () => void }) {
   const { dispatch } = useGame();
 
   const difficulties: { level: Difficulty; label: string; desc: string }[] = [
@@ -29,7 +29,7 @@ export function DifficultySelect() {
         ))}
       </div>
 
-      <Button variant="secondary" onClick={() => dispatch({ type: 'RETURN_TO_MENU' })}>
+      <Button variant="secondary" onClick={onBack}>
         Back
       </Button>
     </div>

@@ -26,13 +26,18 @@ export function GameApp() {
   const { state, dispatch } = useGame();
   const [menuScreen, setMenuScreen] = useState<MenuScreen>('main');
 
+  const goToMainMenu = () => {
+    dispatch({ type: 'RETURN_TO_MENU' });
+    setMenuScreen('main');
+  };
+
   // Handle menu navigation
   if (state.screen === 'menu') {
     if (menuScreen === 'difficulty') {
-      return <DifficultySelect />;
+      return <DifficultySelect onBack={goToMainMenu} />;
     }
     if (menuScreen === 'freeplay') {
-      return <FreePlayMenu />;
+      return <FreePlayMenu onBack={goToMainMenu} />;
     }
 
     // Main menu with custom handlers
@@ -75,7 +80,7 @@ export function GameApp() {
   }
 
   if (state.screen === 'gameover') {
-    return <GameOverScreen />;
+    return <GameOverScreen onPlayAgain={goToMainMenu} />;
   }
 
   // Playing screen

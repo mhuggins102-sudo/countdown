@@ -75,5 +75,4 @@ export const ROUND_ORDER: RoundType[] = [
   'letters', 'letters', 'conundrum',
 ];
 
-export const TIMER_DURATION = 30;
-export const NUMBERS_TIMER_DURATION = 60;
+export const TIMER_DURATION = 60;

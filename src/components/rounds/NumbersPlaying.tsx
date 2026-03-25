@@ -4,7 +4,7 @@ import { useTimer } from '../../hooks/useTimer';
 import { Timer } from '../shared/Timer';
 import { Button } from '../shared/Button';
 import type { NumbersRoundState, SolutionStep } from '../../types/game';
-import { NUMBERS_TIMER_DURATION } from '../../types/game';
+import { TIMER_DURATION } from '../../types/game';
 
 type Op = '+' | '-' | '*' | '/';
 
@@ -37,7 +37,6 @@ export function NumbersPlaying() {
 
   const lastStep = steps.length > 0 ? steps[steps.length - 1] : null;
   const currentAnswer = lastStep ? lastStep.result : null;
-  const distance = currentAnswer !== null ? Math.abs(currentAnswer - round.target) : null;
   const allUsed = tiles.length <= 1;
 
   const doSubmit = useCallback((timerExpired: boolean) => {
@@ -128,7 +127,7 @@ export function NumbersPlaying() {
 
   return (
     <div className="flex flex-col items-center gap-4">
-      <Timer timeRemaining={state.timeRemaining} isRunning={state.timerRunning} totalTime={NUMBERS_TIMER_DURATION} />
+      <Timer timeRemaining={state.timeRemaining} isRunning={state.timerRunning} totalTime={TIMER_DURATION} />
 
       {/* Target */}
       <div className="bg-[#1a2d50] rounded-xl px-8 py-3">
@@ -191,22 +190,6 @@ export function NumbersPlaying() {
               {displayOp(op)}
             </button>
           ))}
-        </div>
-      )}
-
-      {/* Current value indicator */}
-      {currentAnswer !== null && !submitted && (
-        <div className="text-center">
-          <div className={distance === 0 ? 'text-green-400' : 'text-blue-300'}>
-            <span className="text-sm">Current: </span>
-            <span className="text-2xl font-bold text-white">{currentAnswer}</span>
-            {distance !== null && distance > 0 && (
-              <span className="text-sm ml-2">(off by {distance})</span>
-            )}
-            {distance === 0 && (
-              <span className="text-sm ml-2 text-green-400">Exact!</span>
-            )}
-          </div>
         </div>
       )}
 

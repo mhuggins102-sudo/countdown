@@ -1,7 +1,7 @@
 import { useGame } from '../../hooks/useGame';
 import { Button } from '../shared/Button';
 
-export function FreePlayMenu() {
+export function FreePlayMenu({ onBack }: { onBack: () => void }) {
   const { dispatch } = useGame();
 
   return (
@@ -16,7 +16,7 @@ export function FreePlayMenu() {
         >
           <div className="text-xl font-bold text-white group-hover:text-[#fbbf24]">Letters Round</div>
           <div className="text-sm text-blue-300 mt-1">
-            Pick 9 letters and find the longest word in 30 seconds
+            Pick 9 letters and find the longest word in 60 seconds
           </div>
         </button>
 
@@ -31,7 +31,7 @@ export function FreePlayMenu() {
         </button>
       </div>
 
-      <Button variant="secondary" onClick={() => dispatch({ type: 'RETURN_TO_MENU' })}>
+      <Button variant="secondary" onClick={onBack}>
         Back to Menu
       </Button>
     </div>

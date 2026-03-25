@@ -48,17 +48,22 @@ export function NumbersPicking() {
         {round.isPlayerPicking ? 'Pick your numbers' : 'AI is picking numbers...'}
       </h2>
 
-      {/* Number tiles revealed so far */}
-      <div className="flex gap-2 flex-wrap justify-center">
-        {round.numbers.map((num, i) => (
-          <NumberTile key={i} number={num} isLarge={num >= 25} animate index={i} />
-        ))}
-        {Array.from({ length: 6 - round.numbers.length }).map((_, i) => (
-          <div
-            key={`empty-${i}`}
-            className="w-16 h-16 rounded-lg border-2 border-dashed border-[#2a4a7f]/50"
-          />
-        ))}
+      {/* Number tiles revealed so far — 3/3 layout */}
+      <div className="flex flex-col items-center gap-2">
+        <div className="flex gap-2 justify-center">
+          {[0, 1, 2].map((i) => (
+            i < round.numbers.length
+              ? <NumberTile key={i} number={round.numbers[i]} isLarge={round.numbers[i] >= 25} animate index={i} />
+              : <div key={`empty-${i}`} className="w-16 h-16 rounded-lg border-2 border-dashed border-[#2a4a7f]/50" />
+          ))}
+        </div>
+        <div className="flex gap-2 justify-center">
+          {[3, 4, 5].map((i) => (
+            i < round.numbers.length
+              ? <NumberTile key={i} number={round.numbers[i]} isLarge={round.numbers[i] >= 25} animate index={i} />
+              : <div key={`empty-${i}`} className="w-16 h-16 rounded-lg border-2 border-dashed border-[#2a4a7f]/50" />
+          ))}
+        </div>
       </div>
 
       <div className="text-sm text-blue-400">
