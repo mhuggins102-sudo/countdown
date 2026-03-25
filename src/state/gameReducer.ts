@@ -238,6 +238,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         ...state,
         timerRunning: false,
         timeRemaining: 0,
+        phase: 'reveal',
       };
 
     case 'SET_ROUND_RESULTS': {

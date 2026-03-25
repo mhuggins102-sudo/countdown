@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useGame } from '../../hooks/useGame';
 import { useTimer } from '../../hooks/useTimer';
 import { LetterTile } from '../shared/LetterTile';
@@ -21,10 +21,22 @@ export function LettersPlaying() {
     }
   }, [currentWord, submitted, dispatch]);
 
+  // When submitted manually, wait briefly then transition to reveal
+  useEffect(() => {
+    if (submitted && state.phase === 'playing') {
+      const timer = setTimeout(() => {
+        dispatch({ type: 'TIMER_EXPIRED' });
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [submitted, state.phase, dispatch]);
+
+  // When timer runs out naturally
   useTimer(() => {
     if (!submitted) {
+      setSubmitted(true);
       dispatch({ type: 'SUBMIT_LETTERS_WORD', word: currentWord });
-      dispatch({ type: 'TIMER_EXPIRED' });
+      // Dispatch TIMER_EXPIRED immediately (the useEffect above will handle reveal)
     }
   });
 

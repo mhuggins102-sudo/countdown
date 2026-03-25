@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useGame } from '../../hooks/useGame';
 import { useTimer } from '../../hooks/useTimer';
 import { NumberTile } from '../shared/NumberTile';
@@ -20,13 +20,23 @@ export function NumbersPlaying() {
     }
   }, [input, submitted, dispatch]);
 
+  // When submitted, wait briefly then transition to reveal
+  useEffect(() => {
+    if (submitted) {
+      const timer = setTimeout(() => {
+        dispatch({ type: 'TIMER_EXPIRED' });
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [submitted, dispatch]);
+
   useTimer(() => {
     if (!submitted) {
+      setSubmitted(true);
       const num = parseInt(input, 10);
       if (!isNaN(num)) {
         dispatch({ type: 'SUBMIT_NUMBERS_ANSWER', answer: num });
       }
-      dispatch({ type: 'TIMER_EXPIRED' });
     }
   });
 

@@ -28,10 +28,20 @@ export function ConundrumPlaying() {
     }
   }, [input, submitted, dispatch]);
 
+  // When submitted, wait briefly then transition to reveal
+  useEffect(() => {
+    if (submitted) {
+      const timer = setTimeout(() => {
+        dispatch({ type: 'TIMER_EXPIRED' });
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [submitted, dispatch]);
+
   useTimer(() => {
     if (!submitted) {
+      setSubmitted(true);
       dispatch({ type: 'SUBMIT_CONUNDRUM_GUESS', guess: input });
-      dispatch({ type: 'TIMER_EXPIRED' });
     }
   });
 
