@@ -82,7 +82,7 @@ export function drawSmallNumber(pool: NumberPool): { number: number; pool: Numbe
 export function aiPickNumberType(
   currentNumbers: number[],
   largeCount: number,
-  smallCount: number,
+  _smallCount: number,
   difficulty: Difficulty,
 ): 'large' | 'small' {
   const total = currentNumbers.length;
