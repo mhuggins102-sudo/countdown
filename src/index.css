@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+:root {
+  --cd-dark: #0a1628;
+  --cd-blue: #1a2d50;
+  --cd-blue-light: #2a4a7f;
+  --cd-blue-bright: #3b82f6;
+  --cd-gold: #f59e0b;
+  --cd-gold-light: #fbbf24;
+  --cd-white: #f8fafc;
+  --cd-green: #22c55e;
+  --cd-red: #ef4444;
+}
+
+body {
+  margin: 0;
+  background: var(--cd-dark);
+}
+
+@keyframes tile-flip {
+  0% { transform: rotateY(90deg); opacity: 0; }
+  100% { transform: rotateY(0deg); opacity: 1; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-tile-flip {
+  animation: tile-flip 0.4s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out forwards;
+}
