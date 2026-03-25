@@ -1,51 +1,96 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { useGame } from '../../hooks/useGame';
+import { NumberTile } from '../shared/NumberTile';
 import { Button } from '../shared/Button';
-import { aiPickLargeCount } from '../../engine/letterPicker';
+import { createNumberPool, drawLargeNumber, drawSmallNumber, aiPickNumberType, type NumberPool } from '../../engine/letterPicker';
 import type { NumbersRoundState } from '../../types/game';
 
 export function NumbersPicking() {
   const { state, dispatch } = useGame();
   const round = state.currentRoundState as NumbersRoundState;
+  const poolRef = useRef<NumberPool>(createNumberPool());
 
-  // AI auto-picks large count
+  const canPickLarge = round.largeCount < 4 && round.numbers.length < 6;
+  const canPickSmall = round.numbers.length < 6;
+
+  const pickNumber = useCallback((type: 'large' | 'small') => {
+    const pool = poolRef.current;
+    if (type === 'large') {
+      const { number, pool: newPool } = drawLargeNumber(pool);
+      poolRef.current = newPool;
+      dispatch({ type: 'PICK_NUMBER', number, isLarge: true });
+    } else {
+      const { number, pool: newPool } = drawSmallNumber(pool);
+      poolRef.current = newPool;
+      dispatch({ type: 'PICK_NUMBER', number, isLarge: false });
+    }
+  }, [dispatch]);
+
+  // AI auto-picks numbers one at a time
   useEffect(() => {
-    if (!round.isPlayerPicking && round.largeCount === -1) {
+    if (!round.isPlayerPicking && round.numbers.length < 6) {
       const timer = setTimeout(() => {
-        const count = aiPickLargeCount(state.difficulty);
-        dispatch({ type: 'PICK_LARGE_COUNT', count });
-      }, 1000);
+        const choice = aiPickNumberType(
+          round.numbers,
+          round.largeCount,
+          round.smallCount,
+          state.difficulty,
+        );
+        pickNumber(choice);
+      }, 600);
       return () => clearTimeout(timer);
     }
-  }, [round.isPlayerPicking, round.largeCount, state.difficulty, dispatch]);
+  }, [round.isPlayerPicking, round.numbers.length, round.largeCount, round.smallCount, state.difficulty, pickNumber]);
 
   return (
     <div className="flex flex-col items-center gap-6">
       <h2 className="text-xl font-semibold text-blue-300">
-        {round.isPlayerPicking ? 'How many large numbers?' : 'AI is choosing...'}
+        {round.isPlayerPicking ? 'Pick your numbers' : 'AI is picking numbers...'}
       </h2>
 
-      <p className="text-blue-400 text-sm">
-        Large numbers: 25, 50, 75, 100. The rest will be small (1-10).
-      </p>
+      {/* Number tiles revealed so far */}
+      <div className="flex gap-2 flex-wrap justify-center">
+        {round.numbers.map((num, i) => (
+          <NumberTile key={i} number={num} isLarge={num >= 25} animate index={i} />
+        ))}
+        {Array.from({ length: 6 - round.numbers.length }).map((_, i) => (
+          <div
+            key={`empty-${i}`}
+            className="w-16 h-16 rounded-lg border-2 border-dashed border-[#2a4a7f]/50"
+          />
+        ))}
+      </div>
 
-      {round.isPlayerPicking && (
-        <div className="flex gap-3">
-          {[0, 1, 2, 3, 4].map((count) => (
-            <Button
-              key={count}
-              variant={count === 2 ? 'gold' : 'secondary'}
-              size="lg"
-              onClick={() => dispatch({ type: 'PICK_LARGE_COUNT', count })}
-            >
-              {count} large
-            </Button>
-          ))}
+      <div className="text-sm text-blue-400">
+        {round.largeCount} large, {round.smallCount} small ({round.numbers.length}/6)
+      </div>
+
+      {/* Pick buttons (only when player is picking) */}
+      {round.isPlayerPicking && round.numbers.length < 6 && (
+        <div className="flex gap-4">
+          <Button
+            variant="gold"
+            size="lg"
+            onClick={() => pickNumber('large')}
+            disabled={!canPickLarge}
+          >
+            Large
+          </Button>
+          <Button
+            variant="primary"
+            size="lg"
+            onClick={() => pickNumber('small')}
+            disabled={!canPickSmall}
+          >
+            Small
+          </Button>
         </div>
       )}
 
-      {!round.isPlayerPicking && (
-        <div className="text-blue-300 animate-pulse">Selecting...</div>
+      {round.isPlayerPicking && (
+        <p className="text-blue-400/60 text-xs">
+          Large: 25, 50, 75, 100 (max 4) &middot; Small: 1-10
+        </p>
       )}
     </div>
   );

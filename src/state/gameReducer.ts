@@ -17,10 +17,11 @@ export type GameAction =
   | { type: 'INIT_ROUND' }
   | { type: 'PICK_LETTER'; letter: string; isConsonant: boolean }
   | { type: 'PICK_LARGE_COUNT'; count: number }
+  | { type: 'PICK_NUMBER'; number: number; isLarge: boolean }
   | { type: 'START_TIMER' }
   | { type: 'TICK' }
   | { type: 'SUBMIT_LETTERS_WORD'; word: string }
-  | { type: 'SUBMIT_NUMBERS_ANSWER'; answer: number }
+  | { type: 'SUBMIT_NUMBERS_ANSWER'; answer: number; steps: import('../types/game').SolutionStep[] }
   | { type: 'SUBMIT_CONUNDRUM_GUESS'; guess: string }
   | { type: 'TIMER_EXPIRED' }
   | { type: 'SET_ROUND_RESULTS'; playerScore: number; aiScore: number; extras?: Record<string, unknown> }
@@ -67,9 +68,11 @@ function createNumbersRound(roundIndex: number): NumbersRoundState {
   return {
     type: 'numbers',
     numbers: [],
-    largeCount: -1,
+    largeCount: 0,
+    smallCount: 0,
     target: generateTarget(),
     playerAnswer: null,
+    playerSteps: [],
     aiAnswer: null,
     solution: [],
     playerScore: 0,
@@ -173,6 +176,30 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           ...state.currentRoundState,
           numbers,
           largeCount: action.count,
+          smallCount: 6 - action.count,
+        },
+      };
+    }
+
+    case 'PICK_NUMBER': {
+      if (state.currentRoundState?.type !== 'numbers') return state;
+      const numRound = state.currentRoundState;
+      const newNumbers = [...numRound.numbers, action.number];
+      const newLargeCount = numRound.largeCount + (action.isLarge ? 1 : 0);
+      const newSmallCount = numRound.smallCount + (action.isLarge ? 0 : 1);
+
+      const allPicked = newNumbers.length >= 6;
+
+      return {
+        ...state,
+        phase: allPicked ? 'playing' : 'picking',
+        timerRunning: allPicked,
+        timeRemaining: allPicked ? TIMER_DURATION : state.timeRemaining,
+        currentRoundState: {
+          ...numRound,
+          numbers: newNumbers,
+          largeCount: newLargeCount,
+          smallCount: newSmallCount,
         },
       };
     }
@@ -217,6 +244,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         currentRoundState: {
           ...state.currentRoundState,
           playerAnswer: action.answer,
+          playerSteps: action.steps,
         },
       };
     }

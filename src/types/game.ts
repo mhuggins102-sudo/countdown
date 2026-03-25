@@ -28,8 +28,10 @@ export interface NumbersRoundState {
   type: 'numbers';
   numbers: number[];
   largeCount: number;
+  smallCount: number;
   target: number;
   playerAnswer: number | null;
+  playerSteps: SolutionStep[];
   aiAnswer: number | null;
   solution: SolutionStep[];
   playerScore: number;

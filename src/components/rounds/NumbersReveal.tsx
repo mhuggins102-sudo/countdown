@@ -5,7 +5,7 @@ import { SolutionSteps } from './SolutionSteps';
 import { solveNumbers } from '../../engine/numbersSolver';
 import { aiPickNumber } from '../../engine/aiOpponent';
 import { scoreNumbersRound } from '../../engine/scoring';
-import type { NumbersRoundState } from '../../types/game';
+import type { NumbersRoundState, SolutionStep } from '../../types/game';
 
 export function NumbersReveal() {
   const { state, dispatch } = useGame();
@@ -35,7 +35,8 @@ export function NumbersReveal() {
 
   if (!revealed || state.phase !== 'reveal') return null;
 
-  const playerDist = round.playerAnswer !== null ? Math.abs(round.playerAnswer - round.target) : null;
+  const playerDist = round.playerAnswer !== null && round.playerAnswer !== -9999
+    ? Math.abs(round.playerAnswer - round.target) : null;
   const aiDist = round.aiAnswer !== null ? Math.abs(round.aiAnswer - round.target) : null;
 
   // Find closest achievable for solution display
@@ -57,7 +58,7 @@ export function NumbersReveal() {
         <div className="flex items-center justify-between">
           <div>
             <span className="text-2xl font-bold text-white tabular-nums">
-              {round.playerAnswer ?? '(none)'}
+              {playerDist !== null ? round.playerAnswer : '(none)'}
             </span>
             {playerDist !== null && (
               <span className="text-sm text-blue-300 ml-2">
@@ -67,6 +68,16 @@ export function NumbersReveal() {
           </div>
           <span className="text-2xl font-bold text-[#fbbf24]">+{round.playerScore}</span>
         </div>
+        {/* Show player's working */}
+        {round.playerSteps.length > 0 && (
+          <div className="mt-2 pt-2 border-t border-[#2a4a7f]/50 font-mono text-sm space-y-1">
+            {round.playerSteps.map((step: SolutionStep, i: number) => (
+              <div key={i} className="text-blue-200">
+                {step.a} {step.op === '*' ? '\u00d7' : step.op === '/' ? '\u00f7' : step.op} {step.b} = {step.result}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* AI result */}
@@ -89,7 +100,7 @@ export function NumbersReveal() {
         </div>
       )}
 
-      {/* Solution steps */}
+      {/* Optimal solution steps */}
       <SolutionSteps steps={round.solution} target={round.target} closest={closest} />
 
       <Button
