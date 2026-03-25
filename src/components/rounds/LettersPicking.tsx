@@ -59,7 +59,7 @@ export function LettersPicking() {
       {/* Letter tiles */}
       <div className="flex gap-2 flex-wrap justify-center">
         {round.letters.map((letter, i) => (
-          <LetterTile key={i} letter={letter} size="lg" animate index={i} />
+          <LetterTile key={i} letter={letter} size="lg" animate={i === round.letters.length - 1} index={0} />
         ))}
         {Array.from({ length: 9 - round.letters.length }).map((_, i) => (
           <div

@@ -64,6 +64,7 @@ export interface GameState {
   screen: Screen;
   timerRunning: boolean;
   timeRemaining: number;
+  timerDuration: number;
   freeplayType: RoundType | null;
 }
 

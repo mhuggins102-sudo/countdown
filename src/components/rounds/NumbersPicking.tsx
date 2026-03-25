@@ -53,21 +53,21 @@ export function NumbersPicking() {
         <div className="flex gap-2 justify-center">
           {[0, 1, 2].map((i) => (
             i < round.numbers.length
-              ? <NumberTile key={i} number={round.numbers[i]} isLarge={round.numbers[i] >= 25} animate index={i} />
+              ? <NumberTile key={i} number={round.numbers[i]} isLarge={round.numbers[i] >= 25} animate={i === round.numbers.length - 1} index={0} />
               : <div key={`empty-${i}`} className="w-16 h-16 rounded-lg border-2 border-dashed border-[#2a4a7f]/50" />
           ))}
         </div>
         <div className="flex gap-2 justify-center">
           {[3, 4, 5].map((i) => (
             i < round.numbers.length
-              ? <NumberTile key={i} number={round.numbers[i]} isLarge={round.numbers[i] >= 25} animate index={i} />
+              ? <NumberTile key={i} number={round.numbers[i]} isLarge={round.numbers[i] >= 25} animate={i === round.numbers.length - 1} index={0} />
               : <div key={`empty-${i}`} className="w-16 h-16 rounded-lg border-2 border-dashed border-[#2a4a7f]/50" />
           ))}
         </div>
       </div>
 
       <div className="text-sm text-blue-400">
-        {round.largeCount} large, {round.smallCount} small ({round.numbers.length}/6)
+        {round.largeCount} large, {round.smallCount} small
       </div>
 
       {/* Pick buttons (only when player is picking) */}

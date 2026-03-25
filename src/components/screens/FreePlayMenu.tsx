@@ -1,7 +1,7 @@
 import { useGame } from '../../hooks/useGame';
 import { Button } from '../shared/Button';
 
-export function FreePlayMenu({ onBack }: { onBack: () => void }) {
+export function FreePlayMenu({ onBack, timerDuration }: { onBack: () => void; timerDuration: number }) {
   const { dispatch } = useGame();
 
   return (
@@ -11,7 +11,7 @@ export function FreePlayMenu({ onBack }: { onBack: () => void }) {
 
       <div className="flex flex-col gap-4 w-full max-w-sm">
         <button
-          onClick={() => dispatch({ type: 'START_FREEPLAY', roundType: 'letters' })}
+          onClick={() => dispatch({ type: 'START_FREEPLAY', timerDuration, roundType: 'letters' })}
           className="bg-[#1a2d50] hover:bg-[#2a4a7f] border border-[#2a4a7f] hover:border-[#3b82f6] rounded-xl p-5 text-left transition-all group"
         >
           <div className="text-xl font-bold text-white group-hover:text-[#fbbf24]">Letters Round</div>
@@ -21,7 +21,7 @@ export function FreePlayMenu({ onBack }: { onBack: () => void }) {
         </button>
 
         <button
-          onClick={() => dispatch({ type: 'START_FREEPLAY', roundType: 'numbers' })}
+          onClick={() => dispatch({ type: 'START_FREEPLAY', timerDuration, roundType: 'numbers' })}
           className="bg-[#1a2d50] hover:bg-[#2a4a7f] border border-[#2a4a7f] hover:border-[#3b82f6] rounded-xl p-5 text-left transition-all group"
         >
           <div className="text-xl font-bold text-white group-hover:text-[#fbbf24]">Numbers Round</div>

@@ -7,13 +7,14 @@ import type {
   ConundrumRoundState,
 } from '../types/game';
 import { ROUND_ORDER, TIMER_DURATION } from '../types/game';
+
 import { selectNumbers, generateTarget } from '../engine/letterPicker';
 import { CONUNDRUM_WORDS } from '../data/conundrums';
 import { shuffle } from '../utils/shuffle';
 
 export type GameAction =
-  | { type: 'START_FULL_GAME'; difficulty: Difficulty }
-  | { type: 'START_FREEPLAY'; roundType: RoundType }
+  | { type: 'START_FULL_GAME'; difficulty: Difficulty; timerDuration: number }
+  | { type: 'START_FREEPLAY'; roundType: RoundType; timerDuration: number }
   | { type: 'INIT_ROUND' }
   | { type: 'PICK_LETTER'; letter: string; isConsonant: boolean }
   | { type: 'PICK_LARGE_COUNT'; count: number }
@@ -40,6 +41,7 @@ export const initialState: GameState = {
   screen: 'menu',
   timerRunning: false,
   timeRemaining: TIMER_DURATION,
+  timerDuration: TIMER_DURATION,
   freeplayType: null,
 };
 
@@ -114,6 +116,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         screen: 'playing',
         currentRound: 0,
         phase: 'picking',
+        timerDuration: action.timerDuration,
+        timeRemaining: action.timerDuration,
         currentRoundState: createRoundState(ROUND_ORDER[0], 0),
       };
 
@@ -125,6 +129,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         freeplayType: action.roundType,
         currentRound: 0,
         phase: 'picking',
+        timerDuration: action.timerDuration,
+        timeRemaining: action.timerDuration,
         currentRoundState: createRoundState(action.roundType, 0),
       };
 
@@ -136,7 +142,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         ...state,
         phase: 'picking',
         timerRunning: false,
-        timeRemaining: TIMER_DURATION,
+        timeRemaining: state.timerDuration,
         currentRoundState: createRoundState(roundType, state.currentRound),
       };
     }
@@ -154,7 +160,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         ...state,
         phase: shouldStartTimer ? 'playing' : 'picking',
         timerRunning: shouldStartTimer,
-        timeRemaining: shouldStartTimer ? TIMER_DURATION : state.timeRemaining,
+        timeRemaining: shouldStartTimer ? state.timerDuration : state.timeRemaining,
         currentRoundState: {
           ...letters,
           letters: newLetters,
@@ -171,7 +177,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         ...state,
         phase: 'playing',
         timerRunning: true,
-        timeRemaining: TIMER_DURATION,
+        timeRemaining: state.timerDuration,
         currentRoundState: {
           ...state.currentRoundState,
           numbers,
@@ -194,7 +200,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         ...state,
         phase: allPicked ? 'playing' : 'picking',
         timerRunning: allPicked,
-        timeRemaining: allPicked ? TIMER_DURATION : state.timeRemaining,
+        timeRemaining: allPicked ? state.timerDuration : state.timeRemaining,
         currentRoundState: {
           ...numRound,
           numbers: newNumbers,
@@ -209,7 +215,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         ...state,
         phase: 'playing',
         timerRunning: true,
-        timeRemaining: TIMER_DURATION,
+        timeRemaining: state.timerDuration,
       };
 
     case 'TICK':
@@ -309,7 +315,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         currentRound: nextRound,
         phase: roundType === 'conundrum' ? 'playing' : 'picking',
         timerRunning: roundType === 'conundrum',
-        timeRemaining: TIMER_DURATION,
+        timeRemaining: state.timerDuration,
         currentRoundState: createRoundState(roundType, nextRound),
       };
     }

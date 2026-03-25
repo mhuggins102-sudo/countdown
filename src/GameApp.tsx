@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useGame } from './hooks/useGame';
-import { ROUND_ORDER } from './types/game';
+import { ROUND_ORDER, TIMER_DURATION } from './types/game';
 
 // Screens
 import { DifficultySelect } from './components/screens/DifficultySelect';
@@ -25,6 +25,7 @@ type MenuScreen = 'main' | 'difficulty' | 'freeplay';
 export function GameApp() {
   const { state, dispatch } = useGame();
   const [menuScreen, setMenuScreen] = useState<MenuScreen>('main');
+  const [timerDuration, setTimerDuration] = useState(TIMER_DURATION);
 
   const goToMainMenu = () => {
     dispatch({ type: 'RETURN_TO_MENU' });
@@ -34,10 +35,10 @@ export function GameApp() {
   // Handle menu navigation
   if (state.screen === 'menu') {
     if (menuScreen === 'difficulty') {
-      return <DifficultySelect onBack={goToMainMenu} />;
+      return <DifficultySelect onBack={goToMainMenu} timerDuration={timerDuration} />;
     }
     if (menuScreen === 'freeplay') {
-      return <FreePlayMenu onBack={goToMainMenu} />;
+      return <FreePlayMenu onBack={goToMainMenu} timerDuration={timerDuration} />;
     }
 
     // Main menu with custom handlers
@@ -51,11 +52,16 @@ export function GameApp() {
           <p className="text-blue-300 mt-2 text-lg">The classic numbers and letters game</p>
         </div>
 
-        <div className="w-24 h-24 rounded-full border-4 border-[#3b82f6] flex items-center justify-center">
-          <div className="w-16 h-16 rounded-full border-2 border-[#2a4a7f] flex items-center justify-center">
-            <span className="text-3xl font-bold text-[#fbbf24]">30</span>
+        <button
+          onClick={() => setTimerDuration((d) => d === 60 ? 30 : 60)}
+          className="w-24 h-24 rounded-full border-4 border-[#3b82f6] flex items-center justify-center cursor-pointer hover:border-[#fbbf24] transition-colors active:scale-95 group"
+          title="Tap to toggle 30/60 seconds"
+        >
+          <div className="w-16 h-16 rounded-full border-2 border-[#2a4a7f] group-hover:border-[#fbbf24]/50 flex items-center justify-center transition-colors">
+            <span className="text-3xl font-bold text-[#fbbf24]">{timerDuration}</span>
           </div>
-        </div>
+        </button>
+        <p className="text-blue-400/50 text-xs -mt-4">tap to change timer</p>
 
         <div className="flex flex-col gap-4 w-full max-w-sm">
           <button

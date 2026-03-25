@@ -55,7 +55,7 @@ export function ConundrumPlaying() {
     <div className="flex flex-col items-center gap-6">
       <h2 className="text-xl font-semibold text-[#fbbf24]">CONUNDRUM</h2>
 
-      <Timer timeRemaining={state.timeRemaining} isRunning={state.timerRunning} />
+      <Timer timeRemaining={state.timeRemaining} isRunning={state.timerRunning} totalTime={state.timerDuration} />
 
       {/* Scrambled letters */}
       <div className="flex gap-2 flex-wrap justify-center">

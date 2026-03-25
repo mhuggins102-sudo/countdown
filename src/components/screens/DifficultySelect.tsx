@@ -2,7 +2,7 @@ import { useGame } from '../../hooks/useGame';
 import { Button } from '../shared/Button';
 import type { Difficulty } from '../../types/game';
 
-export function DifficultySelect({ onBack }: { onBack: () => void }) {
+export function DifficultySelect({ onBack, timerDuration }: { onBack: () => void; timerDuration: number }) {
   const { dispatch } = useGame();
 
   const difficulties: { level: Difficulty; label: string; desc: string }[] = [
@@ -20,7 +20,7 @@ export function DifficultySelect({ onBack }: { onBack: () => void }) {
         {difficulties.map(({ level, label, desc }) => (
           <button
             key={level}
-            onClick={() => dispatch({ type: 'START_FULL_GAME', difficulty: level })}
+            onClick={() => dispatch({ type: 'START_FULL_GAME', difficulty: level, timerDuration })}
             className="bg-[#1a2d50] hover:bg-[#2a4a7f] border border-[#2a4a7f] hover:border-[#3b82f6] rounded-xl p-4 text-left transition-all group"
           >
             <div className="text-xl font-bold text-white group-hover:text-[#fbbf24]">{label}</div>

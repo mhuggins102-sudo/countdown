@@ -4,7 +4,6 @@ import { useTimer } from '../../hooks/useTimer';
 import { Timer } from '../shared/Timer';
 import { Button } from '../shared/Button';
 import type { NumbersRoundState, SolutionStep } from '../../types/game';
-import { TIMER_DURATION } from '../../types/game';
 
 type Op = '+' | '-' | '*' | '/';
 
@@ -127,7 +126,7 @@ export function NumbersPlaying() {
 
   return (
     <div className="flex flex-col items-center gap-4">
-      <Timer timeRemaining={state.timeRemaining} isRunning={state.timerRunning} totalTime={TIMER_DURATION} />
+      <Timer timeRemaining={state.timeRemaining} isRunning={state.timerRunning} totalTime={state.timerDuration} />
 
       {/* Target */}
       <div className="bg-[#1a2d50] rounded-xl px-8 py-3">

@@ -65,7 +65,7 @@ export function LettersPlaying() {
 
   return (
     <div className="flex flex-col items-center gap-6">
-      <Timer timeRemaining={state.timeRemaining} isRunning={state.timerRunning} />
+      <Timer timeRemaining={state.timeRemaining} isRunning={state.timerRunning} totalTime={state.timerDuration} />
 
       {/* Available letter tiles */}
       <div className="flex gap-2 flex-wrap justify-center">
