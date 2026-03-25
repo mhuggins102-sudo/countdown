@@ -4,7 +4,7 @@ import { LetterTile } from '../shared/LetterTile';
 import { Button } from '../shared/Button';
 import { createPool, drawConsonant, drawVowel, aiPickLetters, type LetterPool } from '../../engine/letterPicker';
 import { useRef } from 'react';
-import type { LettersRoundState, Difficulty } from '../../types/game';
+import type { LettersRoundState } from '../../types/game';
 
 export function LettersPicking() {
   const { state, dispatch } = useGame();

@@ -20,7 +20,6 @@ export function ConundrumReveal() {
       aiSolved = aiResult.solved;
     }
 
-    const playerCorrect = round.playerGuess.toUpperCase() === round.answer.toUpperCase();
     const playerSubmittedFirst = round.playerGuess.length > 0;
 
     const scores = scoreConundrumRound(

@@ -1,4 +1,4 @@
-import type { Difficulty, SolutionStep } from '../types/game';
+import type { Difficulty } from '../types/game';
 import { findAllValidWords } from './wordFinder';
 import { solveNumbers } from './numbersSolver';
 

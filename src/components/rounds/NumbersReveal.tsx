@@ -16,7 +16,7 @@ export function NumbersReveal() {
     if (revealed) return;
     setRevealed(true);
 
-    const { closest, steps } = solveNumbers(round.numbers, round.target);
+    const { steps } = solveNumbers(round.numbers, round.target);
     const aiAnswer = state.mode === 'fullgame'
       ? aiPickNumber(round.numbers, round.target, state.difficulty)
       : null;
