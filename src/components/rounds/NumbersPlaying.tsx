@@ -23,8 +23,6 @@ export function NumbersPlaying() {
   // Drag state for reordering
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-  // Error flash
-  const [error, setError] = useState<string | null>(null);
 
   // Evaluate current expression
   const evalResult = isExpressionComplete(expr) ? evaluateExpression(expr) : null;
@@ -69,12 +67,6 @@ export function NumbersPlaying() {
       }
     }
   });
-
-  // Show error briefly
-  const flashError = (msg: string) => {
-    setError(msg);
-    setTimeout(() => setError(null), 1500);
-  };
 
   // Tap a number tile to add to expression line
   const handleTileTap = (tileIndex: number) => {
@@ -319,11 +311,6 @@ export function NumbersPlaying() {
             <span className="text-blue-400/50 text-sm">...</span>
           )}
         </div>
-      )}
-
-      {/* Error message */}
-      {error && (
-        <div className="text-red-400 text-sm animate-fade-in">{error}</div>
       )}
 
       {/* Operators and parentheses */}
