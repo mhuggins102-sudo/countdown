@@ -1,44 +1,49 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useGame } from '../../hooks/useGame';
 import { useTimer } from '../../hooks/useTimer';
 import { Timer } from '../shared/Timer';
 import { Button } from '../shared/Button';
-import type { NumbersRoundState } from '../../types/game';
-import {
-  evaluateExpression,
-  isExpressionComplete,
-  displayOp,
-  type ExprItem,
-} from '../../engine/expressionEval';
+import type { NumbersRoundState, SolutionStep } from '../../types/game';
+import { displayOp } from '../../engine/expressionEval';
+
+type Op = '+' | '-' | '*' | '/';
 
 export function NumbersPlaying() {
   const { state, dispatch } = useGame();
   const round = state.currentRoundState as NumbersRoundState;
   const [submitted, setSubmitted] = useState(false);
 
-  // Track which tiles are used (by index into round.numbers)
-  const [usedTiles, setUsedTiles] = useState<Set<number>>(() => new Set());
-  // The expression line items
-  const [expr, setExpr] = useState<ExprItem[]>([]);
-  // Drag state for reordering
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  // Available tiles: original 6 numbers plus any computed results; null means used up
+  const [available, setAvailable] = useState<(number | null)[]>(() => [...round.numbers]);
+  // Steps taken so far
+  const [steps, setSteps] = useState<SolutionStep[]>([]);
+  // Current selection state
+  const [selectedFirst, setSelectedFirst] = useState<number | null>(null); // index into available
+  const [selectedOp, setSelectedOp] = useState<Op | null>(null);
 
-  // Evaluate current expression
-  const evalResult = isExpressionComplete(expr) ? evaluateExpression(expr) : null;
-  const currentAnswer = evalResult?.value ?? null;
+  // The player's current answer is the last result, or a single selected number
+  const lastStep = steps.length > 0 ? steps[steps.length - 1] : null;
+  const currentAnswer = lastStep ? lastStep.result : null;
   const distance = currentAnswer !== null ? Math.abs(currentAnswer - round.target) : null;
 
   const handleSubmit = useCallback(() => {
-    if (!submitted && evalResult) {
+    if (!submitted) {
       setSubmitted(true);
-      dispatch({
-        type: 'SUBMIT_NUMBERS_ANSWER',
-        answer: evalResult.value,
-        steps: evalResult.steps,
-      });
+      if (currentAnswer !== null) {
+        dispatch({
+          type: 'SUBMIT_NUMBERS_ANSWER',
+          answer: currentAnswer,
+          steps,
+        });
+      } else {
+        dispatch({
+          type: 'SUBMIT_NUMBERS_ANSWER',
+          answer: -9999,
+          steps: [],
+        });
+      }
     }
-  }, [submitted, evalResult, dispatch]);
+  }, [submitted, currentAnswer, steps, dispatch]);
 
   useEffect(() => {
     if (submitted && state.phase === 'playing') {
@@ -52,11 +57,11 @@ export function NumbersPlaying() {
   useTimer(() => {
     if (!submitted) {
       setSubmitted(true);
-      if (evalResult) {
+      if (currentAnswer !== null) {
         dispatch({
           type: 'SUBMIT_NUMBERS_ANSWER',
-          answer: evalResult.value,
-          steps: evalResult.steps,
+          answer: currentAnswer,
+          steps,
         });
       } else {
         dispatch({
@@ -68,159 +73,96 @@ export function NumbersPlaying() {
     }
   });
 
-  // Tap a number tile to add to expression line
-  const handleTileTap = (tileIndex: number) => {
-    if (submitted || usedTiles.has(tileIndex)) return;
-    const value = round.numbers[tileIndex];
-    setExpr([...expr, { type: 'number', value, tileIndex }]);
-    setUsedTiles(new Set([...usedTiles, tileIndex]));
-  };
+  // Tap a number tile
+  const handleNumberTap = (index: number) => {
+    if (submitted || available[index] === null) return;
 
-  // Tap an operator to add to expression line
-  const handleOpTap = (op: '+' | '-' | '*' | '/') => {
-    if (submitted) return;
-    setExpr([...expr, { type: 'op', value: op }]);
-  };
-
-  // Tap parenthesis
-  const handleParenTap = (paren: '(' | ')') => {
-    if (submitted) return;
-    setExpr([...expr, { type: 'paren', value: paren }]);
-  };
-
-  // Undo last item
-  const handleUndo = () => {
-    if (submitted || expr.length === 0) return;
-    const last = expr[expr.length - 1];
-    const newExpr = expr.slice(0, -1);
-    setExpr(newExpr);
-    // If it was a number, restore the tile
-    if (last.type === 'number') {
-      const newUsed = new Set(usedTiles);
-      newUsed.delete(last.tileIndex);
-      setUsedTiles(newUsed);
+    if (selectedFirst === null) {
+      // Select first operand
+      setSelectedFirst(index);
+    } else if (selectedOp === null) {
+      // No operator yet — deselect and select this one instead
+      if (index === selectedFirst) {
+        setSelectedFirst(null);
+      } else {
+        setSelectedFirst(index);
+      }
+    } else {
+      // We have first + op, now apply with second
+      if (index === selectedFirst) return; // can't use same tile twice
+      const a = available[selectedFirst]!;
+      const b = available[index]!;
+      const result = applyOp(a, selectedOp, b);
+      if (result === null) {
+        // Invalid operation — reset selection
+        setSelectedFirst(null);
+        setSelectedOp(null);
+        return;
+      }
+      // Record step
+      const step: SolutionStep = { a, op: selectedOp, b, result };
+      setSteps([...steps, step]);
+      // Remove used tiles, add result as new tile
+      const newAvailable = [...available];
+      newAvailable[selectedFirst] = null;
+      newAvailable[index] = null;
+      newAvailable.push(result);
+      setAvailable(newAvailable);
+      // Reset selection
+      setSelectedFirst(null);
+      setSelectedOp(null);
     }
   };
 
-  // Clear all
+  // Tap an operator
+  const handleOpTap = (op: Op) => {
+    if (submitted) return;
+    if (selectedFirst === null) return; // need a number first
+    setSelectedOp(op);
+  };
+
+  // Undo last step
+  const handleUndo = () => {
+    if (submitted || steps.length === 0) return;
+    const lastStep = steps[steps.length - 1];
+    const newSteps = steps.slice(0, -1);
+    setSteps(newSteps);
+    // Remove the result tile (last element) and restore the two operands
+    const newAvailable = available.slice(0, -1); // remove last (the result)
+    // Find the null slots where a and b were and restore them
+    // We need to find which slots were nulled — they're the ones that had a and b
+    // Since we always null them in order and push result at end, we can track by finding nulls
+    // Actually, let's just rebuild: find two null slots and restore them
+    let restoredA = false;
+    let restoredB = false;
+    for (let i = 0; i < newAvailable.length; i++) {
+      if (newAvailable[i] === null && !restoredA) {
+        // Check if this could be the a value
+        // We need to restore in the right spots — use a smarter approach
+        // Since operations consume two tiles and produce one, undoing removes the produced
+        // and restores the two consumed. We stored the values so just find null slots.
+        newAvailable[i] = lastStep.a;
+        restoredA = true;
+      } else if (newAvailable[i] === null && restoredA && !restoredB) {
+        newAvailable[i] = lastStep.b;
+        restoredB = true;
+      }
+    }
+    setAvailable(newAvailable);
+    setSelectedFirst(null);
+    setSelectedOp(null);
+  };
+
+  // Clear all — reset to original numbers
   const handleClear = () => {
     if (submitted) return;
-    setExpr([]);
-    setUsedTiles(new Set());
+    setAvailable([...round.numbers]);
+    setSteps([]);
+    setSelectedFirst(null);
+    setSelectedOp(null);
   };
 
-  // Remove item from expression line by index
-  const handleExprItemRemove = (index: number) => {
-    if (submitted) return;
-    const item = expr[index];
-    const newExpr = [...expr];
-    newExpr.splice(index, 1);
-    setExpr(newExpr);
-    if (item.type === 'number') {
-      const newUsed = new Set(usedTiles);
-      newUsed.delete(item.tileIndex);
-      setUsedTiles(newUsed);
-    }
-  };
-
-  // Drag and drop reordering on expression line
-  const handleDragStart = (index: number) => {
-    setDragIndex(index);
-  };
-
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    setDragOverIndex(index);
-  };
-
-  const handleDrop = (targetIndex: number) => {
-    if (dragIndex === null || dragIndex === targetIndex) {
-      setDragIndex(null);
-      setDragOverIndex(null);
-      return;
-    }
-    const newExpr = [...expr];
-    const [moved] = newExpr.splice(dragIndex, 1);
-    newExpr.splice(targetIndex, 0, moved);
-    setExpr(newExpr);
-    setDragIndex(null);
-    setDragOverIndex(null);
-  };
-
-  const handleDragEnd = () => {
-    setDragIndex(null);
-    setDragOverIndex(null);
-  };
-
-  // Touch drag state for mobile
-  const touchState = useRef<{
-    index: number;
-    startX: number;
-    startY: number;
-  } | null>(null);
-
-  const handleTouchStart = (index: number, e: React.TouchEvent) => {
-    const touch = e.touches[0];
-    touchState.current = { index, startX: touch.clientX, startY: touch.clientY };
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (!touchState.current) return;
-    const touch = e.changedTouches[0];
-    const dx = Math.abs(touch.clientX - touchState.current.startX);
-    const dy = Math.abs(touch.clientY - touchState.current.startY);
-    // If barely moved, treat as tap-to-remove
-    if (dx < 10 && dy < 10) {
-      handleExprItemRemove(touchState.current.index);
-    }
-    touchState.current = null;
-  };
-
-  const ops: ('+' | '-' | '*' | '/')[] = ['+', '-', '*', '/'];
-
-  // Render an expression item
-  const renderExprItem = (item: ExprItem, key: string) => {
-    if (item.type === 'number') {
-      const isOriginal = item.tileIndex < round.numbers.length;
-      const isLarge = item.value >= 25 && isOriginal;
-      return (
-        <span
-          key={key}
-          className={`
-            inline-flex items-center justify-center px-3 py-2 rounded-lg font-bold text-lg
-            ${isOriginal
-              ? isLarge
-                ? 'bg-gradient-to-b from-[#f59e0b] to-[#d97706] text-[#0a1628]'
-                : 'bg-gradient-to-b from-[#2a4a7f] to-[#1a2d50] text-white'
-              : 'bg-gradient-to-b from-[#22c55e] to-[#16a34a] text-white'
-            }
-            min-w-[2.5rem]
-          `}
-        >
-          {item.value}
-        </span>
-      );
-    }
-    if (item.type === 'op') {
-      return (
-        <span
-          key={key}
-          className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-[#fbbf24] text-[#0a1628] font-bold text-lg"
-        >
-          {displayOp(item.value)}
-        </span>
-      );
-    }
-    // paren
-    return (
-      <span
-        key={key}
-        className="inline-flex items-center justify-center w-7 h-9 text-[#fbbf24] font-bold text-2xl"
-      >
-        {item.value}
-      </span>
-    );
-  };
+  const ops: Op[] = ['+', '-', '*', '/'];
 
   return (
     <div className="flex flex-col items-center gap-4">
@@ -234,112 +176,113 @@ export function NumbersPlaying() {
 
       {/* Available number tiles */}
       <div className="flex gap-2 flex-wrap justify-center">
-        {round.numbers.map((num, i) => {
-          const isUsed = usedTiles.has(i);
+        {available.map((num, i) => {
+          if (num === null) {
+            return (
+              <div
+                key={i}
+                className="w-16 h-16 rounded-lg bg-[#1a2d50]/30 border-2 border-[#2a4a7f]/20"
+              />
+            );
+          }
+          const isOriginal = i < round.numbers.length;
+          const isResult = !isOriginal;
+          const isSelected = selectedFirst === i;
+          const isLarge = isOriginal && num >= 25;
           return (
             <button
               key={i}
-              onClick={() => handleTileTap(i)}
-              disabled={submitted || isUsed}
+              onClick={() => handleNumberTap(i)}
+              disabled={submitted}
               className={`
                 w-16 h-16 rounded-lg font-bold text-2xl flex items-center justify-center
                 border-2 shadow-lg transition-all duration-200
-                ${isUsed
-                  ? 'bg-[#1a2d50]/30 text-[#1a2d50]/20 border-[#2a4a7f]/20 scale-90'
-                  : num >= 25
+                ${isSelected
+                  ? 'ring-4 ring-[#fbbf24] border-[#fbbf24] scale-105'
+                  : ''
+                }
+                ${isResult
+                  ? 'bg-gradient-to-b from-[#22c55e] to-[#16a34a] text-white border-[#22c55e]/60 hover:border-[#22c55e] cursor-pointer active:scale-95'
+                  : isLarge
                     ? 'bg-gradient-to-b from-[#f59e0b] to-[#d97706] text-[#0a1628] border-[#fbbf24]/60 hover:border-[#fbbf24] cursor-pointer active:scale-95'
                     : 'bg-gradient-to-b from-[#2a4a7f] to-[#1a2d50] text-white border-[#3b82f6]/40 hover:border-[#3b82f6] cursor-pointer active:scale-95'
                 }
                 ${submitted ? 'opacity-50 cursor-not-allowed' : ''}
               `}
             >
-              {isUsed ? '' : num}
+              {num}
             </button>
           );
         })}
       </div>
 
-      {/* Expression line */}
-      <div className="bg-[#0f1d32] border-2 border-[#2a4a7f]/50 rounded-xl p-3 w-full max-w-lg min-h-16 flex items-center gap-1.5 flex-wrap">
-        {expr.length === 0 ? (
-          <span className="text-blue-400/40 text-sm w-full text-center">
-            Tap numbers and operators to build your expression
-          </span>
-        ) : (
-          expr.map((item, i) => (
-            <div
-              key={i}
-              draggable={!submitted}
-              onDragStart={() => handleDragStart(i)}
-              onDragOver={(e) => handleDragOver(e, i)}
-              onDrop={() => handleDrop(i)}
-              onDragEnd={handleDragEnd}
-              onTouchStart={(e) => handleTouchStart(i, e)}
-              onTouchEnd={handleTouchEnd}
-              onClick={() => !submitted && handleExprItemRemove(i)}
-              className={`
-                cursor-pointer transition-all duration-150
-                ${dragIndex === i ? 'opacity-30 scale-90' : ''}
-                ${dragOverIndex === i && dragIndex !== i ? 'translate-x-2' : ''}
-                hover:opacity-70
-              `}
-              title="Click to remove"
-            >
-              {renderExprItem(item, `expr-${i}`)}
-            </div>
-          ))
-        )}
-      </div>
-
-      {/* Live evaluation result */}
-      {expr.length > 0 && (
-        <div className="text-center min-h-8">
-          {evalResult ? (
-            <div className={distance === 0 ? 'text-green-400' : 'text-blue-300'}>
-              <span className="text-sm">= </span>
-              <span className="text-2xl font-bold text-white">{evalResult.value}</span>
-              {distance !== null && distance > 0 && (
-                <span className="text-sm ml-2">(off by {distance})</span>
-              )}
-              {distance === 0 && (
-                <span className="text-sm ml-2 text-green-400">Exact!</span>
-              )}
-            </div>
-          ) : isExpressionComplete(expr) ? (
-            <span className="text-red-400 text-sm">Invalid expression</span>
-          ) : (
-            <span className="text-blue-400/50 text-sm">...</span>
+      {/* Current selection indicator */}
+      {!submitted && (selectedFirst !== null || selectedOp !== null) && (
+        <div className="flex items-center gap-2 text-lg text-white bg-[#0f1d32] border border-[#2a4a7f]/50 rounded-lg px-4 py-2">
+          {selectedFirst !== null && available[selectedFirst] !== null && (
+            <span className="font-bold text-[#fbbf24]">{available[selectedFirst]}</span>
           )}
+          {selectedOp && (
+            <span className="font-bold text-white">{displayOp(selectedOp)}</span>
+          )}
+          <span className="text-blue-400/50 text-sm">
+            {selectedFirst !== null && !selectedOp ? '← pick operator' : selectedOp ? '← pick second number' : ''}
+          </span>
         </div>
       )}
 
-      {/* Operators and parentheses */}
+      {/* Operators */}
       {!submitted && (
         <div className="flex gap-2 items-center">
-          <button
-            onClick={() => handleParenTap('(')}
-            className="w-11 h-11 rounded-lg bg-[#1a2d50] border border-[#2a4a7f] text-[#fbbf24] font-bold text-xl
-              hover:bg-[#2a4a7f] cursor-pointer active:scale-95 transition-all"
-          >
-            (
-          </button>
           {ops.map((op) => (
             <button
               key={op}
               onClick={() => handleOpTap(op)}
-              className="w-12 h-12 rounded-full font-bold text-xl flex items-center justify-center
-                bg-[#2a4a7f] text-white hover:bg-[#3b82f6] cursor-pointer active:scale-95 transition-all"
+              disabled={selectedFirst === null}
+              className={`
+                w-12 h-12 rounded-full font-bold text-xl flex items-center justify-center
+                transition-all
+                ${selectedOp === op
+                  ? 'bg-[#fbbf24] text-[#0a1628] ring-2 ring-white scale-110'
+                  : selectedFirst !== null
+                    ? 'bg-[#2a4a7f] text-white hover:bg-[#3b82f6] cursor-pointer active:scale-95'
+                    : 'bg-[#1a2d50] text-[#2a4a7f] cursor-not-allowed'
+                }
+              `}
             >
               {displayOp(op)}
             </button>
           ))}
-          <button
-            onClick={() => handleParenTap(')')}
-            className="w-11 h-11 rounded-lg bg-[#1a2d50] border border-[#2a4a7f] text-[#fbbf24] font-bold text-xl
-              hover:bg-[#2a4a7f] cursor-pointer active:scale-95 transition-all"
-          >
-            )
-          </button>
+        </div>
+      )}
+
+      {/* Steps taken */}
+      {steps.length > 0 && (
+        <div className="bg-[#0f1d32] border border-[#2a4a7f]/50 rounded-xl p-3 w-full max-w-md">
+          <div className="text-xs text-blue-400 mb-1">Your working</div>
+          <div className="space-y-1 font-mono text-sm">
+            {steps.map((step, i) => (
+              <div key={i} className="text-blue-200">
+                {step.a} {displayOp(step.op)} {step.b} = <span className="text-white font-bold">{step.result}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Distance indicator */}
+      {currentAnswer !== null && !submitted && (
+        <div className="text-center">
+          <div className={distance === 0 ? 'text-green-400' : 'text-blue-300'}>
+            <span className="text-sm">Current: </span>
+            <span className="text-2xl font-bold text-white">{currentAnswer}</span>
+            {distance !== null && distance > 0 && (
+              <span className="text-sm ml-2">(off by {distance})</span>
+            )}
+            {distance === 0 && (
+              <span className="text-sm ml-2 text-green-400">Exact!</span>
+            )}
+          </div>
         </div>
       )}
 
@@ -350,7 +293,7 @@ export function NumbersPlaying() {
             variant="secondary"
             size="sm"
             onClick={handleClear}
-            disabled={expr.length === 0}
+            disabled={steps.length === 0 && selectedFirst === null}
           >
             Clear
           </Button>
@@ -358,7 +301,7 @@ export function NumbersPlaying() {
             variant="secondary"
             size="sm"
             onClick={handleUndo}
-            disabled={expr.length === 0}
+            disabled={steps.length === 0}
           >
             Undo
           </Button>
@@ -366,7 +309,6 @@ export function NumbersPlaying() {
             variant="gold"
             size="lg"
             onClick={handleSubmit}
-            disabled={!evalResult}
           >
             Submit
           </Button>
@@ -380,4 +322,17 @@ export function NumbersPlaying() {
       )}
     </div>
   );
+}
+
+function applyOp(a: number, op: Op, b: number): number | null {
+  switch (op) {
+    case '+': return a + b;
+    case '-': {
+      const result = a - b;
+      return result > 0 ? result : null;
+    }
+    case '*': return a * b;
+    case '/': return b !== 0 && a % b === 0 ? a / b : null;
+    default: return null;
+  }
 }
