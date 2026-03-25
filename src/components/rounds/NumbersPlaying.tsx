@@ -4,6 +4,7 @@ import { useTimer } from '../../hooks/useTimer';
 import { Timer } from '../shared/Timer';
 import { Button } from '../shared/Button';
 import type { NumbersRoundState, SolutionStep } from '../../types/game';
+import { NUMBERS_TIMER_DURATION } from '../../types/game';
 import { displayOp } from '../../engine/expressionEval';
 
 type Op = '+' | '-' | '*' | '/';
@@ -13,37 +14,32 @@ export function NumbersPlaying() {
   const round = state.currentRoundState as NumbersRoundState;
   const [submitted, setSubmitted] = useState(false);
 
-  // Available tiles: original 6 numbers plus any computed results; null means used up
-  const [available, setAvailable] = useState<(number | null)[]>(() => [...round.numbers]);
-  // Steps taken so far
+  // Fixed 6-slot grid: result replaces one of the used slots, the other becomes null
+  const [slots, setSlots] = useState<(number | null)[]>(() => [...round.numbers]);
   const [steps, setSteps] = useState<SolutionStep[]>([]);
-  // Current selection state
-  const [selectedFirst, setSelectedFirst] = useState<number | null>(null); // index into available
+  const [selectedFirst, setSelectedFirst] = useState<number | null>(null);
   const [selectedOp, setSelectedOp] = useState<Op | null>(null);
 
-  // The player's current answer is the last result, or a single selected number
   const lastStep = steps.length > 0 ? steps[steps.length - 1] : null;
   const currentAnswer = lastStep ? lastStep.result : null;
   const distance = currentAnswer !== null ? Math.abs(currentAnswer - round.target) : null;
 
-  const handleSubmit = useCallback(() => {
-    if (!submitted) {
-      setSubmitted(true);
-      if (currentAnswer !== null) {
-        dispatch({
-          type: 'SUBMIT_NUMBERS_ANSWER',
-          answer: currentAnswer,
-          steps,
-        });
-      } else {
-        dispatch({
-          type: 'SUBMIT_NUMBERS_ANSWER',
-          answer: -9999,
-          steps: [],
-        });
-      }
-    }
-  }, [submitted, currentAnswer, steps, dispatch]);
+  // Check if all numbers have been consumed (only 1 non-null slot remaining)
+  const nonNullCount = slots.filter((s) => s !== null).length;
+  const allUsed = nonNullCount <= 1;
+
+  const doSubmit = useCallback((timerExpired: boolean) => {
+    if (submitted) return;
+    setSubmitted(true);
+    // On timer expiry, only submit if all numbers were used
+    const answer = timerExpired && !allUsed ? -9999 : (currentAnswer ?? -9999);
+    const submittedSteps = timerExpired && !allUsed ? [] : steps;
+    dispatch({
+      type: 'SUBMIT_NUMBERS_ANSWER',
+      answer,
+      steps: submittedSteps,
+    });
+  }, [submitted, allUsed, currentAnswer, steps, dispatch]);
 
   useEffect(() => {
     if (submitted && state.phase === 'playing') {
@@ -54,119 +50,84 @@ export function NumbersPlaying() {
     }
   }, [submitted, state.phase, dispatch]);
 
-  useTimer(() => {
-    if (!submitted) {
-      setSubmitted(true);
-      if (currentAnswer !== null) {
-        dispatch({
-          type: 'SUBMIT_NUMBERS_ANSWER',
-          answer: currentAnswer,
-          steps,
-        });
-      } else {
-        dispatch({
-          type: 'SUBMIT_NUMBERS_ANSWER',
-          answer: -9999,
-          steps: [],
-        });
-      }
-    }
-  });
+  useTimer(() => doSubmit(true));
 
-  // Tap a number tile
   const handleNumberTap = (index: number) => {
-    if (submitted || available[index] === null) return;
+    if (submitted || slots[index] === null) return;
 
     if (selectedFirst === null) {
-      // Select first operand
       setSelectedFirst(index);
     } else if (selectedOp === null) {
-      // No operator yet — deselect and select this one instead
-      if (index === selectedFirst) {
-        setSelectedFirst(null);
-      } else {
-        setSelectedFirst(index);
-      }
+      // No operator yet — toggle or switch selection
+      setSelectedFirst(index === selectedFirst ? null : index);
     } else {
-      // We have first + op, now apply with second
-      if (index === selectedFirst) return; // can't use same tile twice
-      const a = available[selectedFirst]!;
-      const b = available[index]!;
+      if (index === selectedFirst) return;
+      const a = slots[selectedFirst]!;
+      const b = slots[index]!;
       const result = applyOp(a, selectedOp, b);
       if (result === null) {
-        // Invalid operation — reset selection
         setSelectedFirst(null);
         setSelectedOp(null);
         return;
       }
-      // Record step
       const step: SolutionStep = { a, op: selectedOp, b, result };
       setSteps([...steps, step]);
-      // Remove used tiles, add result as new tile
-      const newAvailable = [...available];
-      newAvailable[selectedFirst] = null;
-      newAvailable[index] = null;
-      newAvailable.push(result);
-      setAvailable(newAvailable);
-      // Reset selection
+      // Place result in the first operand's slot, null out the second
+      const newSlots = [...slots];
+      newSlots[selectedFirst] = result;
+      newSlots[index] = null;
+      setSlots(newSlots);
       setSelectedFirst(null);
       setSelectedOp(null);
     }
   };
 
-  // Tap an operator
   const handleOpTap = (op: Op) => {
-    if (submitted) return;
-    if (selectedFirst === null) return; // need a number first
+    if (submitted || selectedFirst === null) return;
     setSelectedOp(op);
   };
 
-  // Undo last step
   const handleUndo = () => {
     if (submitted || steps.length === 0) return;
-    const lastStep = steps[steps.length - 1];
-    const newSteps = steps.slice(0, -1);
-    setSteps(newSteps);
-    // Remove the result tile (last element) and restore the two operands
-    const newAvailable = available.slice(0, -1); // remove last (the result)
-    // Find the null slots where a and b were and restore them
-    // We need to find which slots were nulled — they're the ones that had a and b
-    // Since we always null them in order and push result at end, we can track by finding nulls
-    // Actually, let's just rebuild: find two null slots and restore them
-    let restoredA = false;
+    const last = steps[steps.length - 1];
+    setSteps(steps.slice(0, -1));
+    // Restore: find the slot with the result and put `a` back, find the null that was `b` and restore it
+    const newSlots = [...slots];
+    // The result is in one of the slots — find it (it equals last.result and was placed at selectedFirst's position)
+    // We need to track which slots were used. Since result replaced the first operand's slot,
+    // we find the slot with the result value and restore a, then find a null slot and restore b.
+    // To be precise, we stored result at first operand's index. We'll find it by value match.
+    let restoredResult = false;
     let restoredB = false;
-    for (let i = 0; i < newAvailable.length; i++) {
-      if (newAvailable[i] === null && !restoredA) {
-        // Check if this could be the a value
-        // We need to restore in the right spots — use a smarter approach
-        // Since operations consume two tiles and produce one, undoing removes the produced
-        // and restores the two consumed. We stored the values so just find null slots.
-        newAvailable[i] = lastStep.a;
-        restoredA = true;
-      } else if (newAvailable[i] === null && restoredA && !restoredB) {
-        newAvailable[i] = lastStep.b;
+    for (let i = 0; i < newSlots.length; i++) {
+      if (!restoredResult && newSlots[i] === last.result) {
+        newSlots[i] = last.a;
+        restoredResult = true;
+      } else if (!restoredB && newSlots[i] === null) {
+        newSlots[i] = last.b;
         restoredB = true;
       }
     }
-    setAvailable(newAvailable);
+    setSlots(newSlots);
     setSelectedFirst(null);
     setSelectedOp(null);
   };
 
-  // Clear all — reset to original numbers
   const handleClear = () => {
     if (submitted) return;
-    setAvailable([...round.numbers]);
+    setSlots([...round.numbers]);
     setSteps([]);
     setSelectedFirst(null);
     setSelectedOp(null);
   };
 
   const ops: Op[] = ['+', '-', '*', '/'];
+  const topRow = slots.slice(0, 4);
+  const bottomRow = slots.slice(4, 6);
 
   return (
     <div className="flex flex-col items-center gap-4">
-      <Timer timeRemaining={state.timeRemaining} isRunning={state.timerRunning} />
+      <Timer timeRemaining={state.timeRemaining} isRunning={state.timerRunning} totalTime={NUMBERS_TIMER_DURATION} />
 
       {/* Target */}
       <div className="bg-[#1a2d50] rounded-xl px-8 py-3">
@@ -174,53 +135,21 @@ export function NumbersPlaying() {
         <div className="text-5xl font-bold text-[#fbbf24] tabular-nums">{round.target}</div>
       </div>
 
-      {/* Available number tiles */}
-      <div className="flex gap-2 flex-wrap justify-center">
-        {available.map((num, i) => {
-          if (num === null) {
-            return (
-              <div
-                key={i}
-                className="w-16 h-16 rounded-lg bg-[#1a2d50]/30 border-2 border-[#2a4a7f]/20"
-              />
-            );
-          }
-          const isOriginal = i < round.numbers.length;
-          const isResult = !isOriginal;
-          const isSelected = selectedFirst === i;
-          const isLarge = isOriginal && num >= 25;
-          return (
-            <button
-              key={i}
-              onClick={() => handleNumberTap(i)}
-              disabled={submitted}
-              className={`
-                w-16 h-16 rounded-lg font-bold text-2xl flex items-center justify-center
-                border-2 shadow-lg transition-all duration-200
-                ${isSelected
-                  ? 'ring-4 ring-[#fbbf24] border-[#fbbf24] scale-105'
-                  : ''
-                }
-                ${isResult
-                  ? 'bg-gradient-to-b from-[#22c55e] to-[#16a34a] text-white border-[#22c55e]/60 hover:border-[#22c55e] cursor-pointer active:scale-95'
-                  : isLarge
-                    ? 'bg-gradient-to-b from-[#f59e0b] to-[#d97706] text-[#0a1628] border-[#fbbf24]/60 hover:border-[#fbbf24] cursor-pointer active:scale-95'
-                    : 'bg-gradient-to-b from-[#2a4a7f] to-[#1a2d50] text-white border-[#3b82f6]/40 hover:border-[#3b82f6] cursor-pointer active:scale-95'
-                }
-                ${submitted ? 'opacity-50 cursor-not-allowed' : ''}
-              `}
-            >
-              {num}
-            </button>
-          );
-        })}
+      {/* Number tiles: 4 on top, 3 on bottom (2 numbers + gap center) */}
+      <div className="flex flex-col items-center gap-2">
+        <div className="flex gap-2 justify-center">
+          {topRow.map((num, i) => renderTile(num, i, i, selectedFirst, slots, round, submitted, handleNumberTap))}
+        </div>
+        <div className="flex gap-2 justify-center">
+          {bottomRow.map((num, i) => renderTile(num, i + 4, i + 4, selectedFirst, slots, round, submitted, handleNumberTap))}
+        </div>
       </div>
 
       {/* Current selection indicator */}
       {!submitted && (selectedFirst !== null || selectedOp !== null) && (
         <div className="flex items-center gap-2 text-lg text-white bg-[#0f1d32] border border-[#2a4a7f]/50 rounded-lg px-4 py-2">
-          {selectedFirst !== null && available[selectedFirst] !== null && (
-            <span className="font-bold text-[#fbbf24]">{available[selectedFirst]}</span>
+          {selectedFirst !== null && slots[selectedFirst] !== null && (
+            <span className="font-bold text-[#fbbf24]">{slots[selectedFirst]}</span>
           )}
           {selectedOp && (
             <span className="font-bold text-white">{displayOp(selectedOp)}</span>
@@ -253,20 +182,6 @@ export function NumbersPlaying() {
               {displayOp(op)}
             </button>
           ))}
-        </div>
-      )}
-
-      {/* Steps taken */}
-      {steps.length > 0 && (
-        <div className="bg-[#0f1d32] border border-[#2a4a7f]/50 rounded-xl p-3 w-full max-w-md">
-          <div className="text-xs text-blue-400 mb-1">Your working</div>
-          <div className="space-y-1 font-mono text-sm">
-            {steps.map((step, i) => (
-              <div key={i} className="text-blue-200">
-                {step.a} {displayOp(step.op)} {step.b} = <span className="text-white font-bold">{step.result}</span>
-              </div>
-            ))}
-          </div>
         </div>
       )}
 
@@ -308,7 +223,7 @@ export function NumbersPlaying() {
           <Button
             variant="gold"
             size="lg"
-            onClick={handleSubmit}
+            onClick={() => doSubmit(false)}
           >
             Submit
           </Button>
@@ -321,6 +236,54 @@ export function NumbersPlaying() {
         </p>
       )}
     </div>
+  );
+}
+
+function renderTile(
+  num: number | null,
+  slotIndex: number,
+  _key: number,
+  selectedFirst: number | null,
+  slots: (number | null)[],
+  round: NumbersRoundState,
+  submitted: boolean,
+  onTap: (index: number) => void,
+) {
+  if (num === null) {
+    return (
+      <div
+        key={slotIndex}
+        className="w-16 h-16 rounded-lg bg-[#1a2d50]/30 border-2 border-[#2a4a7f]/20"
+      />
+    );
+  }
+  const isOriginal = slotIndex < round.numbers.length && num === round.numbers[slotIndex];
+  const isResult = !isOriginal;
+  const isSelected = selectedFirst === slotIndex;
+  const isLarge = !isResult && num >= 25;
+  // Check if this slot originally had a different value (meaning it's been replaced with a result)
+  const wasReplaced = slotIndex < round.numbers.length && slots[slotIndex] !== round.numbers[slotIndex];
+
+  return (
+    <button
+      key={slotIndex}
+      onClick={() => onTap(slotIndex)}
+      disabled={submitted}
+      className={`
+        w-16 h-16 rounded-lg font-bold text-2xl flex items-center justify-center
+        border-2 shadow-lg transition-all duration-200
+        ${isSelected ? 'ring-4 ring-[#fbbf24] border-[#fbbf24] scale-105' : ''}
+        ${isResult || wasReplaced
+          ? 'bg-gradient-to-b from-[#22c55e] to-[#16a34a] text-white border-[#22c55e]/60 hover:border-[#22c55e] cursor-pointer active:scale-95'
+          : isLarge
+            ? 'bg-gradient-to-b from-[#f59e0b] to-[#d97706] text-[#0a1628] border-[#fbbf24]/60 hover:border-[#fbbf24] cursor-pointer active:scale-95'
+            : 'bg-gradient-to-b from-[#2a4a7f] to-[#1a2d50] text-white border-[#3b82f6]/40 hover:border-[#3b82f6] cursor-pointer active:scale-95'
+        }
+        ${submitted ? 'opacity-50 cursor-not-allowed' : ''}
+      `}
+    >
+      {num}
+    </button>
   );
 }
 

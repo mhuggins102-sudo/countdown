@@ -3,12 +3,13 @@ import { TIMER_DURATION } from '../../types/game';
 interface TimerProps {
   timeRemaining: number;
   isRunning: boolean;
+  totalTime?: number;
 }
 
-export function Timer({ timeRemaining, isRunning }: TimerProps) {
+export function Timer({ timeRemaining, isRunning, totalTime = TIMER_DURATION }: TimerProps) {
   const radius = 54;
   const circumference = 2 * Math.PI * radius;
-  const progress = timeRemaining / TIMER_DURATION;
+  const progress = timeRemaining / totalTime;
   const offset = circumference * (1 - progress);
 
   const color = timeRemaining <= 5

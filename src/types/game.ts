@@ -76,3 +76,4 @@ export const ROUND_ORDER: RoundType[] = [
 ];
 
 export const TIMER_DURATION = 30;
+export const NUMBERS_TIMER_DURATION = 60;
