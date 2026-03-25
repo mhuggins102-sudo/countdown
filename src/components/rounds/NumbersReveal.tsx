@@ -5,6 +5,7 @@ import { SolutionSteps } from './SolutionSteps';
 import { solveNumbers } from '../../engine/numbersSolver';
 import { aiPickNumber } from '../../engine/aiOpponent';
 import { scoreNumbersRound } from '../../engine/scoring';
+import { displayOp } from '../../engine/expressionEval';
 import type { NumbersRoundState, SolutionStep } from '../../types/game';
 
 export function NumbersReveal() {
@@ -73,7 +74,7 @@ export function NumbersReveal() {
           <div className="mt-2 pt-2 border-t border-[#2a4a7f]/50 font-mono text-sm space-y-1">
             {round.playerSteps.map((step: SolutionStep, i: number) => (
               <div key={i} className="text-blue-200">
-                {step.a} {step.op === '*' ? '\u00d7' : step.op === '/' ? '\u00f7' : step.op} {step.b} = {step.result}
+                {step.a} {displayOp(step.op)} {step.b} = {step.result}
               </div>
             ))}
           </div>
@@ -101,7 +102,7 @@ export function NumbersReveal() {
       )}
 
       {/* Optimal solution steps */}
-      <SolutionSteps steps={round.solution} target={round.target} closest={closest} />
+      <SolutionSteps steps={round.solution} target={round.target} closest={closest} originalNumbers={round.numbers} />
 
       <Button
         variant="primary"
