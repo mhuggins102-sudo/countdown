@@ -107,13 +107,26 @@ export function GameOverScreen({ onPlayAgain }: { onPlayAgain: () => void }) {
   // Compute stats
   const lettersRounds = state.rounds.filter((r) => r.type === 'letters');
   const numbersRounds = state.rounds.filter((r) => r.type === 'numbers');
-  const bestLettersRound = lettersRounds.reduce(
-    (best, r) => (r.type === 'letters' && r.playerScore > best ? r.playerScore : best),
-    0,
-  );
-  const exactNumbers = numbersRounds.filter(
+
+  const SCRABBLE_VALUES: Record<string, number> = {
+    A: 1, B: 3, C: 3, D: 2, E: 1, F: 4, G: 2, H: 4, I: 1, J: 8, K: 5,
+    L: 1, M: 3, N: 1, O: 1, P: 3, Q: 10, R: 1, S: 1, T: 1, U: 1, V: 4,
+    W: 4, X: 8, Y: 4, Z: 10,
+  };
+  const scrabbleValue = (word: string) =>
+    [...word.toUpperCase()].reduce((sum, ch) => sum + (SCRABBLE_VALUES[ch] ?? 0), 0);
+
+  const lettersWon = lettersRounds.filter((r) => r.playerScore > r.aiScore).length;
+  const numbersWon = numbersRounds.filter((r) => r.playerScore > r.aiScore).length;
+  const perfectNumbers = numbersRounds.filter(
     (r) => r.type === 'numbers' && r.playerAnswer !== null && r.playerAnswer === r.target,
   ).length;
+
+  // Best word: longest, then highest scrabble value
+  const bestWord = lettersRounds
+    .filter((r) => r.type === 'letters' && r.playerWord.length > 0)
+    .map((r) => r.type === 'letters' ? r.playerWord : '')
+    .sort((a, b) => b.length - a.length || scrabbleValue(b) - scrabbleValue(a))[0] || '—';
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen gap-6 px-4">
@@ -170,31 +183,36 @@ export function GameOverScreen({ onPlayAgain }: { onPlayAgain: () => void }) {
       <div className="bg-[#1a2d50] rounded-xl p-5 w-full max-w-md">
         <h3 className="text-lg font-semibold text-[#fbbf24] mb-3">Game Stats</h3>
         <div className="space-y-2 text-sm">
-          {isP1 && (
-            <div className="flex justify-between text-blue-200">
-              <span>Your total score</span>
-              <span className="text-white font-medium">{state.playerTotalScore} pts</span>
-            </div>
-          )}
-          <div className="flex justify-between text-blue-200">
-            <span>Rounds played</span>
-            <span className="text-white font-medium">{state.rounds.length}</span>
-          </div>
-          <div className="flex justify-between text-blue-200">
-            <span>Best letters score</span>
-            <span className="text-white font-medium">{bestLettersRound} pts</span>
-          </div>
-          <div className="flex justify-between text-blue-200">
-            <span>Exact number solutions</span>
-            <span className="text-white font-medium">{exactNumbers}/{numbersRounds.length}</span>
-          </div>
-          {!isP1 && (
-            <div className="flex justify-between text-blue-200">
-              <span>Letters rounds won</span>
-              <span className="text-white font-medium">
-                {lettersRounds.filter((r) => r.playerScore > r.aiScore).length}/{lettersRounds.length}
-              </span>
-            </div>
+          {isP1 ? (
+            <>
+              <div className="flex justify-between text-blue-200">
+                <span>Your total score</span>
+                <span className="text-white font-medium">{state.playerTotalScore} pts</span>
+              </div>
+              <div className="flex justify-between text-blue-200">
+                <span>Rounds played</span>
+                <span className="text-white font-medium">{state.rounds.length}</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex justify-between text-blue-200">
+                <span>Letters rounds won</span>
+                <span className="text-white font-medium">{lettersWon}/{lettersRounds.length}</span>
+              </div>
+              <div className="flex justify-between text-blue-200">
+                <span>Best word</span>
+                <span className="text-white font-medium font-mono uppercase">{bestWord}</span>
+              </div>
+              <div className="flex justify-between text-blue-200">
+                <span>Numbers rounds won</span>
+                <span className="text-white font-medium">{numbersWon}/{numbersRounds.length}</span>
+              </div>
+              <div className="flex justify-between text-blue-200">
+                <span>Perfect numbers</span>
+                <span className="text-white font-medium">{perfectNumbers}/{numbersRounds.length}</span>
+              </div>
+            </>
           )}
         </div>
       </div>
