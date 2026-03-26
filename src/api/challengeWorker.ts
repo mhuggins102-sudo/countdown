@@ -3,6 +3,11 @@
  * Handles creating, fetching, and completing challenge games.
  */
 
+interface KVNamespace {
+  get(key: string): Promise<string | null>;
+  put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void>;
+}
+
 interface Env {
   CHALLENGES: KVNamespace;
 }

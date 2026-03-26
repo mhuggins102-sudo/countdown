@@ -6,11 +6,7 @@ import tailwindcss from '@tailwindcss/vite'
 import { cloudflare } from "@cloudflare/vite-plugin";
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), cloudflare({
-    worker: {
-      entry: './src/api/challengeWorker.ts',
-    },
-  })],
+  plugins: [react(), tailwindcss(), cloudflare()],
   test: {
     globals: true,
     environment: 'jsdom',

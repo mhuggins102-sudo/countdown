@@ -163,7 +163,6 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
     case 'START_CHALLENGE': {
       const rng = rngForRound(action.seed, 0);
-      const hasOpponent = !!action.opponentResults?.length;
       return {
         ...initialState,
         mode: 'challenge',

@@ -8,6 +8,7 @@
   "assets": {
     "not_found_handling": "single-page-application"
   },
+  "main": "./src/api/challengeWorker.ts",
   "compatibility_flags": [
     "nodejs_compat"
   ],

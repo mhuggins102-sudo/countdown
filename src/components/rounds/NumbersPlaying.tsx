@@ -37,7 +37,7 @@ export function NumbersPlaying() {
   const lastStep = steps.length > 0 ? steps[steps.length - 1] : null;
   const currentAnswer = lastStep ? lastStep.result : null;
 
-  const doSubmit = useCallback((timerExpired: boolean) => {
+  const doSubmit = useCallback((_timerExpired: boolean) => {
     if (submitted) return;
     setSubmitted(true);
     // On timer expiry, submit best available: last calculation result, or no answer
