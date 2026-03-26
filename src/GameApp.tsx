@@ -8,6 +8,7 @@ import { DifficultySelect } from './components/screens/DifficultySelect';
 import { FreePlayMenu } from './components/screens/FreePlayMenu';
 import { ChallengeMenu } from './components/screens/ChallengeMenu';
 import { GameOverScreen } from './components/screens/GameOverScreen';
+import { ChallengeResultScreen } from './components/screens/ChallengeResultScreen';
 
 // Round components
 import { LettersPicking } from './components/rounds/LettersPicking';
@@ -24,10 +25,19 @@ import { ScoreBar } from './components/shared/ScoreBar';
 
 type MenuScreen = 'main' | 'difficulty' | 'freeplay' | 'challenge';
 
+interface CompletedResultView {
+  code: string;
+  p1Name: string;
+  p1Score: number;
+  p2Name: string;
+  p2Score: number;
+}
+
 export function GameApp() {
   const { state, dispatch } = useGame();
   const [menuScreen, setMenuScreen] = useState<MenuScreen>('main');
   const [timerDuration, setTimerDuration] = useState(TIMER_DURATION);
+  const [completedResult, setCompletedResult] = useState<CompletedResultView | null>(null);
 
   const checkedUrl = useRef(false);
 
@@ -42,7 +52,18 @@ export function GameApp() {
     window.history.replaceState({}, '', window.location.pathname);
     // Fetch and join the challenge
     fetchChallenge(code).then((challenge) => {
-      if (!challenge || challenge.p2Results) return;
+      if (!challenge) return;
+      if (challenge.p2Results) {
+        // Show completed results
+        setCompletedResult({
+          code: challenge.code,
+          p1Name: challenge.p1Name || 'Player 1',
+          p1Score: challenge.p1TotalScore,
+          p2Name: challenge.p2Name || 'Player 2',
+          p2Score: challenge.p2TotalScore ?? 0,
+        });
+        return;
+      }
       dispatch({
         type: 'START_CHALLENGE',
         seed: challenge.seed,
@@ -58,7 +79,18 @@ export function GameApp() {
   const goToMainMenu = () => {
     dispatch({ type: 'RETURN_TO_MENU' });
     setMenuScreen('main');
+    setCompletedResult(null);
   };
+
+  // Show completed challenge result (from URL or join)
+  if (completedResult) {
+    return (
+      <ChallengeResultScreen
+        {...completedResult}
+        onBack={() => setCompletedResult(null)}
+      />
+    );
+  }
 
   // Handle menu navigation
   if (state.screen === 'menu') {

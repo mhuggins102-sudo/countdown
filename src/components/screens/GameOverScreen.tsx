@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useGame } from '../../hooks/useGame';
 import { Button } from '../shared/Button';
 import { createChallenge, completeChallenge } from '../../api/challengeApi';
+import { saveCompletedChallenge } from '../../utils/challengeHistory';
 import type { ChallengeRoundResult, RoundState } from '../../types/game';
 
 function roundToResult(round: RoundState): ChallengeRoundResult {
@@ -80,6 +81,16 @@ export function GameOverScreen({ onPlayAgain }: { onPlayAgain: () => void }) {
         results,
         totalScore: state.playerTotalScore,
       }).then(() => {
+        // Save to local history
+        saveCompletedChallenge({
+          code: state.challengeData!.code,
+          completedAt: Date.now(),
+          asPlayer: 2,
+          p1Name: state.challengeData!.opponentName || 'Player 1',
+          p1Score: opponentScore,
+          p2Name: 'Player 2',
+          p2Score: state.playerTotalScore,
+        });
         setUploaded(true);
         setUploading(false);
       }).catch(() => setUploading(false));
