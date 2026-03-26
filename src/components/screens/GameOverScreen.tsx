@@ -113,22 +113,20 @@ export function GameOverScreen({ onPlayAgain }: { onPlayAgain: () => void }) {
         )}
       </div>
 
-      {/* Final scores */}
-      <div className="flex gap-8 items-center">
-        <div className="text-center">
-          <div className="text-sm text-blue-300 uppercase">You</div>
-          <div className="text-5xl font-bold text-white">{state.playerTotalScore}</div>
+      {/* Final scores — only for P2 or non-challenge */}
+      {!isP1 && (
+        <div className="flex gap-8 items-center">
+          <div className="text-center">
+            <div className="text-sm text-blue-300 uppercase">You</div>
+            <div className="text-5xl font-bold text-white">{state.playerTotalScore}</div>
+          </div>
+          <div className="text-2xl text-blue-400">vs</div>
+          <div className="text-center">
+            <div className="text-sm text-blue-300 uppercase">{opponentLabel}</div>
+            <div className="text-5xl font-bold text-white">{opponentScore}</div>
+          </div>
         </div>
-        {(hasOpponent || !isChallenge) && (
-          <>
-            <div className="text-2xl text-blue-400">vs</div>
-            <div className="text-center">
-              <div className="text-sm text-blue-300 uppercase">{opponentLabel}</div>
-              <div className="text-5xl font-bold text-white">{opponentScore}</div>
-            </div>
-          </>
-        )}
-      </div>
+      )}
 
       {/* Challenge share section (P1 only) */}
       {isP1 && (
@@ -155,6 +153,12 @@ export function GameOverScreen({ onPlayAgain }: { onPlayAgain: () => void }) {
       <div className="bg-[#1a2d50] rounded-xl p-5 w-full max-w-md">
         <h3 className="text-lg font-semibold text-[#fbbf24] mb-3">Game Stats</h3>
         <div className="space-y-2 text-sm">
+          {isP1 && (
+            <div className="flex justify-between text-blue-200">
+              <span>Your total score</span>
+              <span className="text-white font-medium">{state.playerTotalScore} pts</span>
+            </div>
+          )}
           <div className="flex justify-between text-blue-200">
             <span>Rounds played</span>
             <span className="text-white font-medium">{state.rounds.length}</span>
@@ -167,12 +171,14 @@ export function GameOverScreen({ onPlayAgain }: { onPlayAgain: () => void }) {
             <span>Exact number solutions</span>
             <span className="text-white font-medium">{exactNumbers}/{numbersRounds.length}</span>
           </div>
-          <div className="flex justify-between text-blue-200">
-            <span>Letters rounds won</span>
-            <span className="text-white font-medium">
-              {lettersRounds.filter((r) => r.playerScore > r.aiScore).length}/{lettersRounds.length}
-            </span>
-          </div>
+          {!isP1 && (
+            <div className="flex justify-between text-blue-200">
+              <span>Letters rounds won</span>
+              <span className="text-white font-medium">
+                {lettersRounds.filter((r) => r.playerScore > r.aiScore).length}/{lettersRounds.length}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 

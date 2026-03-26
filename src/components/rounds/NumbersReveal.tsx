@@ -13,7 +13,7 @@ export function NumbersReveal() {
   const { state, dispatch } = useGame();
   const round = state.currentRoundState as NumbersRoundState;
   const [revealed, setRevealed] = useState(false);
-  const { hasOpponent, opponentName, result: opponentResult } = useChallengeOpponent();
+  const { isP1, hasOpponent, opponentName, result: opponentResult } = useChallengeOpponent();
 
   useEffect(() => {
     if (revealed) return;
@@ -74,7 +74,7 @@ export function NumbersReveal() {
               </span>
             )}
           </div>
-          <span className="text-2xl font-bold text-[#fbbf24]">+{round.playerScore}</span>
+          <span className="text-2xl font-bold text-[#fbbf24]">{isP1 ? '+?' : `+${round.playerScore}`}</span>
         </div>
         {/* Show player's working */}
         {round.playerSteps.length > 0 && (

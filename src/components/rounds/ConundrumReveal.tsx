@@ -9,7 +9,7 @@ export function ConundrumReveal() {
   const { state, dispatch } = useGame();
   const round = state.currentRoundState as ConundrumRoundState;
   const [revealed, setRevealed] = useState(false);
-  const { hasOpponent, opponentName, result: opponentResult } = useChallengeOpponent();
+  const { isP1, hasOpponent, opponentName, result: opponentResult } = useChallengeOpponent();
 
   useEffect(() => {
     if (revealed) return;
@@ -59,7 +59,7 @@ export function ConundrumReveal() {
                 {playerCorrect ? 'Correct!' : 'Wrong'}
               </span>
             )}
-            <span className="text-2xl font-bold text-[#fbbf24]">+{round.playerScore}</span>
+            <span className="text-2xl font-bold text-[#fbbf24]">{isP1 ? '+?' : `+${round.playerScore}`}</span>
           </div>
         </div>
       </div>

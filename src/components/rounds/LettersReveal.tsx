@@ -11,7 +11,7 @@ import { useChallengeOpponent } from '../../hooks/useChallengeOpponent';
 export function LettersReveal() {
   const { state, dispatch } = useGame();
   const round = state.currentRoundState as LettersRoundState;
-  const { hasOpponent, opponentName, result: opponentResult } = useChallengeOpponent();
+  const { isP1, hasOpponent, opponentName, result: opponentResult } = useChallengeOpponent();
   const [revealed, setRevealed] = useState(false);
 
   useEffect(() => {
@@ -60,7 +60,7 @@ export function LettersReveal() {
                 {playerValid ? 'Valid' : 'Invalid'}
               </span>
             )}
-            <span className="text-2xl font-bold text-[#fbbf24]">+{round.playerScore}</span>
+            <span className="text-2xl font-bold text-[#fbbf24]">{isP1 ? '+?' : `+${round.playerScore}`}</span>
           </div>
         </div>
       </div>

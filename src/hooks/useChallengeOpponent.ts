@@ -6,18 +6,21 @@ import type { ChallengeRoundResult } from '../types/game';
  * Returns null if not in challenge mode or no opponent data.
  */
 export function useChallengeOpponent(): {
+  isP1: boolean;
   hasOpponent: boolean;
   opponentName: string;
   result: ChallengeRoundResult | null;
 } {
   const { state } = useGame();
   const cd = state.challengeData;
+  const isChallenge = state.mode === 'challenge';
 
-  if (state.mode !== 'challenge' || !cd?.opponentResults?.length) {
-    return { hasOpponent: false, opponentName: '', result: null };
+  if (!isChallenge || !cd?.opponentResults?.length) {
+    return { isP1: isChallenge, hasOpponent: false, opponentName: '', result: null };
   }
 
   return {
+    isP1: false,
     hasOpponent: true,
     opponentName: cd.opponentName || 'Challenger',
     result: cd.opponentResults[state.currentRound] || null,
