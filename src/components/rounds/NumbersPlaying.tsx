@@ -92,7 +92,8 @@ export function NumbersPlaying() {
       // Insert result at minIdx
       newTiles.splice(minIdx, 0, { value: result, isResult: true, isLarge: false });
       setTiles(newTiles);
-      setSelectedFirst(null);
+      // Keep the new result tile selected so the player can chain operations
+      setSelectedFirst(minIdx);
       setSelectedOp(null);
     }
   };

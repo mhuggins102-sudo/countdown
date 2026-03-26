@@ -39,6 +39,12 @@ export function aiPickWord(
   }
 }
 
+// Weighted random offset: lower values have linearly higher probability
+// Uses inverse-square-root sampling for a triangular distribution
+function weightedOffset(maxOffset: number): number {
+  return Math.ceil(maxOffset * (1 - Math.sqrt(Math.random())));
+}
+
 export function aiPickNumber(
   numbers: number[],
   target: number,
@@ -46,26 +52,28 @@ export function aiPickNumber(
 ): number {
   const { closest } = solveNumbers(numbers, target);
 
+  let exactChance: number;
+  let maxOffset: number;
+
   switch (difficulty) {
-    case 'easy': {
-      // Rarely gets the exact answer, often far off
-      if (Math.random() < 0.1) return closest;
-      const offset = Math.floor(Math.random() * 25) + 8;
-      const result = closest + (Math.random() < 0.5 ? offset : -offset);
-      return Math.max(1, result);
-    }
-    case 'medium': {
-      if (Math.random() < 0.4) return closest;
-      const offset = Math.floor(Math.random() * 12) + 3;
-      const result = closest + (Math.random() < 0.5 ? offset : -offset);
-      return Math.max(1, result);
-    }
-    case 'hard': {
-      if (Math.random() < 0.85) return closest;
-      const offset = Math.floor(Math.random() * 3) + 1;
-      return closest + (Math.random() < 0.5 ? offset : -offset);
-    }
+    case 'easy':
+      exactChance = 0.05;
+      maxOffset = 50;
+      break;
+    case 'medium':
+      exactChance = 0.20;
+      maxOffset = 30;
+      break;
+    case 'hard':
+      exactChance = 0.40;
+      maxOffset = 15;
+      break;
   }
+
+  if (Math.random() < exactChance) return closest;
+  const offset = weightedOffset(maxOffset);
+  const result = closest + (Math.random() < 0.5 ? offset : -offset);
+  return Math.max(1, result);
 }
 
 export function aiSolveConundrum(
