@@ -3,7 +3,7 @@ import { useGame } from '../../hooks/useGame';
 import { NumberTile } from '../shared/NumberTile';
 import { Button } from '../shared/Button';
 import { createNumberPool, drawLargeNumber, drawSmallNumber, aiPickNumberType, type NumberPool } from '../../engine/letterPicker';
-import type { NumbersRoundState } from '../../types/game';
+import type { NumbersRoundState, Difficulty } from '../../types/game';
 
 export function NumbersPicking() {
   const { state, dispatch } = useGame();
@@ -34,7 +34,7 @@ export function NumbersPicking() {
           round.numbers,
           round.largeCount,
           round.smallCount,
-          state.difficulty,
+          state.difficulty as Difficulty,
         );
         pickNumber(choice);
       }, 600);
