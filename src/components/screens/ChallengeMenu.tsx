@@ -83,7 +83,7 @@ export function ChallengeMenu({ onBack, timerDuration }: { onBack: () => void; t
           <div className="text-sm text-blue-300 mb-3">
             Enter a friend's challenge code
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
             <input
               type="text"
               value={joinCode}
@@ -93,7 +93,7 @@ export function ChallengeMenu({ onBack, timerDuration }: { onBack: () => void; t
               }}
               placeholder="ABC123"
               maxLength={6}
-              className="flex-1 bg-[#0a1628] border border-[#2a4a7f] rounded-lg px-4 py-3 text-white text-center text-xl font-mono tracking-widest placeholder:text-blue-400/30 focus:border-[#3b82f6] focus:outline-none"
+              className="min-w-0 flex-1 bg-[#0a1628] border border-[#2a4a7f] rounded-lg px-3 py-3 text-white text-center text-xl font-mono tracking-wider placeholder:text-blue-400/30 focus:border-[#3b82f6] focus:outline-none"
             />
             <Button
               variant="primary"

@@ -15,24 +15,47 @@ export function ConundrumReveal() {
     if (revealed) return;
     setRevealed(true);
 
-    // Use the AI result stored in the round state (set during ConundrumPlaying)
-    const playerElapsed = state.timerDuration - round.playerTimeRemaining;
-    const playerSubmittedFirst = round.playerGuess.length > 0 && (!round.aiSolved || playerElapsed < round.aiGuessTime);
+    let playerScore = 0;
+    let aiScore = 0;
 
-    const scores = scoreConundrumRound(
-      round.playerGuess,
-      round.aiSolved,
-      round.answer,
-      playerSubmittedFirst,
-    );
+    if (hasOpponent && opponentResult) {
+      // P2 challenge: head-to-head conundrum scoring
+      const playerCorrect = round.playerGuess.toUpperCase() === round.answer.toUpperCase();
+      const oppCorrect = opponentResult.answer.toUpperCase() === round.answer.toUpperCase();
+
+      if (playerCorrect && oppCorrect) {
+        // Both correct: compare time remaining (higher = faster)
+        const oppTimeRemaining = opponentResult.timeRemaining ?? 0;
+        if (round.playerTimeRemaining > oppTimeRemaining) {
+          playerScore = 10;
+        } else if (oppTimeRemaining > round.playerTimeRemaining) {
+          aiScore = 10;
+        } else {
+          // Same time: both score
+          playerScore = 10;
+          aiScore = 10;
+        }
+      } else if (playerCorrect) {
+        playerScore = 10;
+      } else if (oppCorrect) {
+        aiScore = 10;
+      }
+    } else {
+      // AI or P1 scoring
+      const playerElapsed = state.timerDuration - round.playerTimeRemaining;
+      const playerSubmittedFirst = round.playerGuess.length > 0 && (!round.aiSolved || playerElapsed < round.aiGuessTime);
+      const scores = scoreConundrumRound(round.playerGuess, round.aiSolved, round.answer, playerSubmittedFirst);
+      playerScore = scores.playerScore;
+      aiScore = scores.aiScore;
+    }
 
     dispatch({
       type: 'SET_ROUND_RESULTS',
-      playerScore: scores.playerScore,
-      aiScore: scores.aiScore,
+      playerScore,
+      aiScore,
       extras: { aiSolved: round.aiSolved, aiGuessTime: round.aiGuessTime },
     });
-  }, [revealed, round, state.timerDuration, dispatch]);
+  }, [revealed, round, state.timerDuration, hasOpponent, opponentResult, dispatch]);
 
   if (!revealed || state.phase !== 'reveal') return null;
 

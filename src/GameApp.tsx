@@ -76,7 +76,7 @@ export function GameApp() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-8 px-4">
         <div className="text-center">
-          <h1 className="text-6xl md:text-8xl font-extrabold tracking-tight">
+          <h1 className="text-5xl md:text-8xl font-extrabold tracking-tight">
             <span className="text-[#3b82f6]">COUNT</span>
             <span className="text-[#fbbf24]">DOWN</span>
           </h1>
@@ -136,27 +136,17 @@ export function GameApp() {
   return (
     <div className="min-h-screen p-4 max-w-2xl mx-auto">
       {/* Score bar (full game + challenge) */}
-      {isMultiRound && (() => {
-        // For P2 in challenge mode, compute opponent's cumulative score from their results
-        const challengeOpponentScore = state.challengeData?.opponentResults
-          ?.slice(0, state.rounds.length)
-          .reduce((sum, r) => sum + r.score, 0) ?? 0;
-        const opponentScore = state.challengeData?.opponentResults?.length
-          ? challengeOpponentScore
-          : state.aiTotalScore;
-
-        return (
-          <ScoreBar
-            playerScore={state.playerTotalScore}
-            opponentScore={opponentScore}
-            currentRound={state.currentRound}
-            totalRounds={totalRounds}
-            roundType={roundType || ''}
-            isChallenge={state.mode === 'challenge'}
-            opponentName={state.challengeData?.opponentName}
-          />
-        );
-      })()}
+      {isMultiRound && (
+        <ScoreBar
+          playerScore={state.playerTotalScore}
+          opponentScore={state.aiTotalScore}
+          currentRound={state.currentRound}
+          totalRounds={totalRounds}
+          roundType={roundType || ''}
+          isChallenge={state.mode === 'challenge'}
+          opponentName={state.challengeData?.opponentName}
+        />
+      )}
 
       {/* Free play header */}
       {state.mode === 'freeplay' && (

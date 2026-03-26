@@ -24,7 +24,12 @@ export function NumbersReveal() {
       ? aiPickNumber(round.numbers, round.target, state.difficulty)
       : null;
     const aiAnswer = aiResult?.answer ?? null;
-    const scores = scoreNumbersRound(round.playerAnswer, aiAnswer, round.target);
+
+    // In challenge mode as P2, score head-to-head against P1's answer
+    const opponentAnswer = hasOpponent && opponentResult?.answer
+      ? Number(opponentResult.answer) || null
+      : aiAnswer;
+    const scores = scoreNumbersRound(round.playerAnswer, opponentAnswer, round.target);
 
     dispatch({
       type: 'SET_ROUND_RESULTS',
@@ -36,7 +41,7 @@ export function NumbersReveal() {
         solution: steps,
       },
     });
-  }, [revealed, round, state.mode, state.difficulty, dispatch]);
+  }, [revealed, round, state.mode, state.difficulty, hasOpponent, opponentResult, dispatch]);
 
   if (!revealed || state.phase !== 'reveal') return null;
 

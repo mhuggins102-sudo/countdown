@@ -15,13 +15,13 @@ export function ScoreBar({ playerScore, opponentScore, currentRound, totalRounds
     : 'AI';
 
   return (
-    <div className="grid grid-cols-3 items-center bg-[#1a2d50] rounded-xl px-6 py-3 mb-6">
-      <div className="flex flex-col items-center">
+    <div className="grid grid-cols-[1fr_auto_1fr] items-center bg-[#1a2d50] rounded-xl px-4 py-3 mb-6">
+      <div className="flex flex-col items-start pl-1">
         <span className="text-xs text-blue-300 uppercase tracking-wider">You</span>
         <span className="text-3xl font-bold text-white tabular-nums">{isP1 ? '?' : playerScore}</span>
       </div>
 
-      <div className="flex flex-col items-center">
+      <div className="flex flex-col items-center justify-center px-3">
         <span className="text-xs text-blue-300 uppercase tracking-wider">
           Round {currentRound + 1}/{totalRounds}
         </span>
@@ -29,12 +29,12 @@ export function ScoreBar({ playerScore, opponentScore, currentRound, totalRounds
       </div>
 
       {isP1 ? (
-        <div className="flex flex-col items-center opacity-40">
+        <div className="flex flex-col items-end pr-1 opacity-40">
           <span className="text-xs text-blue-300 uppercase tracking-wider">vs</span>
           <span className="text-sm text-blue-300">TBD</span>
         </div>
       ) : (
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col items-end pr-1">
           <span className="text-xs text-blue-300 uppercase tracking-wider">{opponentLabel}</span>
           <span className="text-3xl font-bold text-white tabular-nums">{opponentScore}</span>
         </div>

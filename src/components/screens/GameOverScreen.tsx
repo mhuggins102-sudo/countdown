@@ -38,9 +38,8 @@ export function GameOverScreen({ onPlayAgain }: { onPlayAgain: () => void }) {
   const hasOpponent = isChallenge && !!state.challengeData?.opponentResults?.length;
   const isP1 = isChallenge && !hasOpponent;
 
-  const opponentScore = hasOpponent
-    ? state.challengeData!.opponentTotalScore
-    : state.aiTotalScore;
+  // For P2 challenge, aiTotalScore accumulated P1's head-to-head scores during reveal
+  const opponentScore = state.aiTotalScore;
   const opponentLabel = hasOpponent
     ? (state.challengeData!.opponentName || 'Challenger')
     : 'AI';

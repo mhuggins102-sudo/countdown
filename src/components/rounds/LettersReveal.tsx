@@ -24,8 +24,9 @@ export function LettersReveal() {
       : '';
     const bestWord = findLongestWord(round.letters);
 
-    // Score the round
-    const scores = scoreLettersRound(round.playerWord, aiWord, round.letters);
+    // In challenge mode as P2, score head-to-head against P1's word
+    const opponentWord = hasOpponent && opponentResult ? opponentResult.answer : aiWord;
+    const scores = scoreLettersRound(round.playerWord, opponentWord, round.letters);
 
     dispatch({
       type: 'SET_ROUND_RESULTS',
@@ -37,7 +38,7 @@ export function LettersReveal() {
         playerWordValid: scores.playerWordValid,
       },
     });
-  }, [revealed, round, state.mode, state.difficulty, dispatch]);
+  }, [revealed, round, state.mode, state.difficulty, hasOpponent, opponentResult, dispatch]);
 
   if (!revealed || state.phase !== 'reveal') return null;
 
