@@ -80,7 +80,7 @@ export function GameApp() {
             <span className="text-[#3b82f6]">COUNT</span>
             <span className="text-[#fbbf24]">DOWN</span>
           </h1>
-          <p className="text-blue-300 mt-2 text-lg">The classic numbers and letters game</p>
+          <p className="text-blue-300 mt-1 text-lg">The classic numbers and letters game</p>
         </div>
 
         <button

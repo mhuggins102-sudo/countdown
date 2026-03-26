@@ -6,6 +6,7 @@ import { Timer } from '../shared/Timer';
 import { Button } from '../shared/Button';
 import { aiSolveConundrum } from '../../engine/aiOpponent';
 import type { ConundrumRoundState } from '../../types/game';
+import { useChallengeOpponent } from '../../hooks/useChallengeOpponent';
 
 export function ConundrumPlaying() {
   const { state, dispatch } = useGame();
@@ -14,9 +15,18 @@ export function ConundrumPlaying() {
   const [submitted, setSubmitted] = useState(false);
   const [aiBuzzed, setAiBuzzed] = useState(false);
   const aiStored = useRef(false);
+  const { hasOpponent, opponentName, result: opponentResult } = useChallengeOpponent();
 
   const scrambledLetters = round.scrambled.split('');
   const currentWord = selectedIndices.map((i) => scrambledLetters[i]).join('');
+
+  // Determine if opponent (AI or P1) solved and when
+  const opponentCorrect = hasOpponent && opponentResult
+    ? opponentResult.answer.toUpperCase() === round.answer.toUpperCase()
+    : false;
+  const opponentBuzzTime = hasOpponent && opponentResult && opponentCorrect
+    ? state.timerDuration - (opponentResult.timeRemaining ?? 0)
+    : 0;
 
   // Calculate and store AI conundrum result on mount
   useEffect(() => {
@@ -25,21 +35,39 @@ export function ConundrumPlaying() {
       const aiResult = aiSolveConundrum(state.difficulty, state.timerDuration);
       dispatch({ type: 'SET_CONUNDRUM_AI', solved: aiResult.solved, guessTime: aiResult.guessTime });
     }
-  }, [state.mode, state.difficulty, dispatch]);
-
-  // Watch for AI buzz-in: when elapsed time passes aiGuessTime
-  useEffect(() => {
-    if (aiBuzzed || submitted || !round.aiSolved || round.aiGuessTime === 0) return;
-    const elapsed = state.timerDuration - state.timeRemaining;
-    if (elapsed >= round.aiGuessTime) {
-      // AI buzzes in with correct answer — freeze the game
-      setAiBuzzed(true);
-      setSubmitted(true);
-      dispatch({ type: 'SUBMIT_CONUNDRUM_GUESS', guess: '', timeRemaining: state.timeRemaining });
+    // For P2 challenge: store opponent's result as the "AI" result
+    if (hasOpponent && opponentCorrect && !aiStored.current) {
+      aiStored.current = true;
+      dispatch({ type: 'SET_CONUNDRUM_AI', solved: true, guessTime: opponentBuzzTime });
     }
-  }, [state.timeRemaining, state.timerDuration, round.aiGuessTime, round.aiSolved, aiBuzzed, submitted, dispatch]);
+  }, [state.difficulty, state.timerDuration, hasOpponent, opponentCorrect, opponentBuzzTime, dispatch]);
 
-  // Transition to reveal after submission or AI buzz-in
+  // Watch for AI/opponent buzz-in: when elapsed time passes their guess time
+  useEffect(() => {
+    if (aiBuzzed || submitted) return;
+
+    // AI buzz-in
+    if (!hasOpponent && round.aiSolved && round.aiGuessTime > 0) {
+      const elapsed = state.timerDuration - state.timeRemaining;
+      if (elapsed >= round.aiGuessTime) {
+        setAiBuzzed(true);
+        setSubmitted(true);
+        dispatch({ type: 'SUBMIT_CONUNDRUM_GUESS', guess: '', timeRemaining: state.timeRemaining });
+      }
+    }
+
+    // P1 opponent buzz-in (challenge P2)
+    if (hasOpponent && opponentCorrect && opponentBuzzTime > 0) {
+      const elapsed = state.timerDuration - state.timeRemaining;
+      if (elapsed >= opponentBuzzTime) {
+        setAiBuzzed(true);
+        setSubmitted(true);
+        dispatch({ type: 'SUBMIT_CONUNDRUM_GUESS', guess: '', timeRemaining: state.timeRemaining });
+      }
+    }
+  }, [state.timeRemaining, state.timerDuration, round.aiGuessTime, round.aiSolved, aiBuzzed, submitted, hasOpponent, opponentCorrect, opponentBuzzTime, dispatch]);
+
+  // Transition to reveal after submission or buzz-in
   useEffect(() => {
     if (submitted && state.phase === 'playing') {
       const delay = aiBuzzed ? 2500 : 1500;
@@ -95,16 +123,20 @@ export function ConundrumPlaying() {
     }
   };
 
+  const buzzLabel = hasOpponent ? (opponentName || 'Challenger') : 'AI';
+
   return (
     <div className="flex flex-col items-center gap-6">
       <Timer timeRemaining={state.timeRemaining} isRunning={state.timerRunning} totalTime={state.timerDuration} />
 
-      {/* AI buzz-in overlay */}
+      {/* AI/Opponent buzz-in overlay */}
       {aiBuzzed && (
         <div className="bg-red-500/20 border-2 border-red-500 rounded-xl px-6 py-4 text-center animate-fade-in w-full max-w-md">
-          <div className="text-red-400 font-bold text-lg">AI buzzed in!</div>
+          <div className="text-red-400 font-bold text-lg">{buzzLabel} buzzed in!</div>
           <div className="text-white text-2xl font-bold tracking-wider mt-1">{round.answer.toUpperCase()}</div>
-          <div className="text-red-300 text-sm mt-1">at {Math.round(round.aiGuessTime)}s</div>
+          <div className="text-red-300 text-sm mt-1">
+            at {hasOpponent ? Math.round(opponentBuzzTime) : Math.round(round.aiGuessTime)}s
+          </div>
         </div>
       )}
 
