@@ -16,7 +16,9 @@ export function SolutionSteps({ steps, target, closest, originalNumbers }: Solut
   const toggle = useCallback(() => {
     if (open) {
       setOpen(false);
+      // Scroll to top of page — try both methods for mobile compatibility
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      document.documentElement.scrollTop = 0;
     } else {
       setOpen(true);
       setTimeout(() => {

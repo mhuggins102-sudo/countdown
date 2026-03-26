@@ -49,6 +49,13 @@ export function NumbersReveal() {
     ? Math.abs(round.playerAnswer - round.target) : null;
   const aiDist = round.aiAnswer !== null ? Math.abs(round.aiAnswer - round.target) : null;
 
+  // Challenger distance (for solution display logic)
+  const oppAnswer = hasOpponent && opponentResult?.answer ? Number(opponentResult.answer) : null;
+  const oppDist = oppAnswer !== null && !isNaN(oppAnswer) ? Math.abs(oppAnswer - round.target) : null;
+
+  // Hide solution if anyone got exact
+  const anyoneExact = playerDist === 0 || aiDist === 0 || oppDist === 0;
+
   // Find closest achievable for solution display
   const lastStep = round.solution.length > 0 ? round.solution[round.solution.length - 1] : null;
   const closest = lastStep ? lastStep.result : round.numbers[0] || 0;
@@ -111,34 +118,30 @@ export function NumbersReveal() {
       )}
 
       {/* Challenger result */}
-      {hasOpponent && opponentResult && (() => {
-        const oppAnswer = opponentResult.answer ? Number(opponentResult.answer) : null;
-        const oppDist = oppAnswer !== null && !isNaN(oppAnswer) ? Math.abs(oppAnswer - round.target) : null;
-        return (
-          <div className="bg-[#1a2d50] rounded-xl p-4 w-full max-w-md">
-            <div className="text-sm text-purple-400 mb-1">{opponentName}'s answer</div>
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-2xl font-bold text-white tabular-nums">
-                  {oppAnswer ?? '(none)'}
+      {hasOpponent && opponentResult && (
+        <div className="bg-[#1a2d50] rounded-xl p-4 w-full max-w-md">
+          <div className="text-sm text-purple-400 mb-1">{opponentName}'s answer</div>
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-2xl font-bold text-white tabular-nums">
+                {oppAnswer ?? '(none)'}
+              </span>
+              {oppDist !== null && (
+                <span className="text-sm text-blue-300 ml-2">
+                  ({formatDist(oppAnswer!)})
                 </span>
-                {oppDist !== null && (
-                  <span className="text-sm text-blue-300 ml-2">
-                    ({formatDist(oppAnswer!)})
-                  </span>
-                )}
-              </div>
-              <span className="text-2xl font-bold text-[#fbbf24]">+{round.aiScore}</span>
+              )}
             </div>
-            {opponentResult.steps && opponentResult.steps.length > 0 && (
-              <StepsWithHighlights steps={opponentResult.steps as SolutionStep[]} originalNumbers={round.numbers} target={round.target} />
-            )}
+            <span className="text-2xl font-bold text-[#fbbf24]">+{round.aiScore}</span>
           </div>
-        );
-      })()}
+          {opponentResult.steps && opponentResult.steps.length > 0 && (
+            <StepsWithHighlights steps={opponentResult.steps as SolutionStep[]} originalNumbers={round.numbers} target={round.target} />
+          )}
+        </div>
+      )}
 
-      {/* Optimal solution steps — hide if player or AI already got exact */}
-      {playerDist !== 0 && aiDist !== 0 && (
+      {/* Optimal solution steps — hide if anyone got exact */}
+      {!anyoneExact && (
         <SolutionSteps steps={round.solution} target={round.target} closest={closest} originalNumbers={round.numbers} />
       )}
 
