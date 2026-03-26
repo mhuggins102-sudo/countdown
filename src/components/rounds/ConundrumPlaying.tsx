@@ -10,44 +10,74 @@ import type { ConundrumRoundState } from '../../types/game';
 export function ConundrumPlaying() {
   const { state, dispatch } = useGame();
   const round = state.currentRoundState as ConundrumRoundState;
-  const [input, setInput] = useState('');
+  const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [submitted, setSubmitted] = useState(false);
-  const aiResultRef = useRef<{ solved: boolean; guessTime: number } | null>(null);
+  const aiStored = useRef(false);
 
-  // Calculate AI conundrum result on mount
+  const scrambledLetters = round.scrambled.split('');
+  const currentWord = selectedIndices.map((i) => scrambledLetters[i]).join('');
+
+  // Calculate and store AI conundrum result on mount
   useEffect(() => {
-    if (state.mode === 'fullgame' && !aiResultRef.current) {
-      aiResultRef.current = aiSolveConundrum(state.difficulty);
+    if (state.mode === 'fullgame' && !aiStored.current) {
+      aiStored.current = true;
+      const aiResult = aiSolveConundrum(state.difficulty);
+      dispatch({ type: 'SET_CONUNDRUM_AI', solved: aiResult.solved, guessTime: aiResult.guessTime });
     }
-  }, [state.mode, state.difficulty]);
+  }, [state.mode, state.difficulty, dispatch]);
 
-  const handleSubmit = useCallback(() => {
-    if (input.length > 0 && !submitted) {
+  const doSubmit = useCallback((guess: string) => {
+    if (!submitted) {
       setSubmitted(true);
-      dispatch({ type: 'SUBMIT_CONUNDRUM_GUESS', guess: input });
+      dispatch({ type: 'SUBMIT_CONUNDRUM_GUESS', guess, timeRemaining: state.timeRemaining });
     }
-  }, [input, submitted, dispatch]);
+  }, [submitted, dispatch, state.timeRemaining]);
+
+  // Auto-submit when all 9 tiles selected and word matches answer
+  useEffect(() => {
+    if (selectedIndices.length === 9 && !submitted) {
+      const word = selectedIndices.map((i) => scrambledLetters[i]).join('');
+      if (word.toUpperCase() === round.answer.toUpperCase()) {
+        doSubmit(word);
+      }
+    }
+  }, [selectedIndices, scrambledLetters, round.answer, submitted, doSubmit]);
 
   // When submitted, wait briefly then transition to reveal
   useEffect(() => {
-    if (submitted) {
+    if (submitted && state.phase === 'playing') {
       const timer = setTimeout(() => {
         dispatch({ type: 'TIMER_EXPIRED' });
       }, 1500);
       return () => clearTimeout(timer);
     }
-  }, [submitted, dispatch]);
+  }, [submitted, state.phase, dispatch]);
 
   useTimer(() => {
     if (!submitted) {
-      setSubmitted(true);
-      dispatch({ type: 'SUBMIT_CONUNDRUM_GUESS', guess: input });
+      doSubmit(currentWord);
     }
   });
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSubmit();
+  const handleTileClick = (index: number) => {
+    if (submitted) return;
+    if (selectedIndices.includes(index)) {
+      const pos = selectedIndices.indexOf(index);
+      setSelectedIndices(selectedIndices.slice(0, pos));
+    } else {
+      setSelectedIndices([...selectedIndices, index]);
+    }
+  };
+
+  const handleUndo = () => {
+    if (selectedIndices.length > 0 && !submitted) {
+      setSelectedIndices(selectedIndices.slice(0, -1));
+    }
+  };
+
+  const handleClear = () => {
+    if (!submitted) {
+      setSelectedIndices([]);
     }
   };
 
@@ -57,35 +87,58 @@ export function ConundrumPlaying() {
 
       <Timer timeRemaining={state.timeRemaining} isRunning={state.timerRunning} totalTime={state.timerDuration} />
 
-      {/* Scrambled letters */}
+      {/* Scrambled letter tiles */}
       <div className="flex gap-2 flex-wrap justify-center">
-        {round.scrambled.split('').map((letter, i) => (
-          <LetterTile key={i} letter={letter} size="lg" animate index={i} />
+        {scrambledLetters.map((letter, i) => (
+          <LetterTile
+            key={i}
+            letter={letter}
+            size="lg"
+            selected={selectedIndices.includes(i)}
+            onClick={() => handleTileClick(i)}
+            disabled={submitted}
+          />
         ))}
       </div>
 
-      <p className="text-blue-300 text-sm">Unscramble the 9 letters to find the word!</p>
+      <p className="text-blue-300 text-sm">Tap tiles to unscramble the 9-letter word!</p>
 
-      {/* Word input */}
-      {!submitted ? (
-        <div className="flex flex-col items-center gap-3">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 9))}
-            onKeyDown={handleKeyDown}
-            placeholder="Type your answer..."
-            maxLength={9}
-            className="bg-[#1a2d50] border-2 border-[#2a4a7f] rounded-xl px-6 py-3 text-2xl font-bold text-white text-center uppercase tracking-widest w-72 focus:outline-none focus:border-[#3b82f6]"
-            autoFocus
-          />
-          <Button variant="gold" size="lg" onClick={handleSubmit} disabled={input.length === 0}>
+      {/* Current word display */}
+      <div className="min-h-16 flex items-center gap-1">
+        {currentWord.length > 0 ? (
+          <div className="flex gap-1">
+            {currentWord.split('').map((letter, i) => (
+              <span
+                key={i}
+                className="w-10 h-10 bg-[#fbbf24] text-[#0a1628] rounded font-bold text-xl flex items-center justify-center"
+              >
+                {letter.toUpperCase()}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <span className="text-blue-400/50 text-lg">Tap tiles to spell the word</span>
+        )}
+      </div>
+
+      {/* Action buttons */}
+      {!submitted && (
+        <div className="flex gap-3">
+          <Button variant="secondary" size="sm" onClick={handleClear} disabled={selectedIndices.length === 0}>
+            Clear
+          </Button>
+          <Button variant="secondary" size="sm" onClick={handleUndo} disabled={selectedIndices.length === 0}>
+            Undo
+          </Button>
+          <Button variant="gold" size="lg" onClick={() => doSubmit(currentWord)} disabled={currentWord.length === 0}>
             Submit
           </Button>
         </div>
-      ) : (
+      )}
+
+      {submitted && (
         <p className="text-blue-300 animate-fade-in">
-          Your guess: <span className="font-bold text-white">{input}</span>
+          Your answer: <span className="font-bold text-white">{currentWord.toUpperCase() || '(no answer)'}</span>
         </p>
       )}
     </div>

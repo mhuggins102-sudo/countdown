@@ -48,14 +48,17 @@ export function aiPickNumber(
 
   switch (difficulty) {
     case 'easy': {
-      if (Math.random() < 0.3) return closest;
-      const offset = Math.floor(Math.random() * 15) + 1;
-      return closest + (Math.random() < 0.5 ? offset : -offset);
+      // Rarely gets the exact answer, often far off
+      if (Math.random() < 0.1) return closest;
+      const offset = Math.floor(Math.random() * 25) + 8;
+      const result = closest + (Math.random() < 0.5 ? offset : -offset);
+      return Math.max(1, result);
     }
     case 'medium': {
-      if (Math.random() < 0.6) return closest;
-      const offset = Math.floor(Math.random() * 8) + 1;
-      return closest + (Math.random() < 0.5 ? offset : -offset);
+      if (Math.random() < 0.4) return closest;
+      const offset = Math.floor(Math.random() * 12) + 3;
+      const result = closest + (Math.random() < 0.5 ? offset : -offset);
+      return Math.max(1, result);
     }
     case 'hard': {
       if (Math.random() < 0.85) return closest;

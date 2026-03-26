@@ -44,6 +44,7 @@ export interface ConundrumRoundState {
   scrambled: string;
   answer: string;
   playerGuess: string;
+  playerTimeRemaining: number;
   aiSolved: boolean;
   aiGuessTime: number;
   playerScore: number;

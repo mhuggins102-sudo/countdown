@@ -23,7 +23,8 @@ export type GameAction =
   | { type: 'TICK' }
   | { type: 'SUBMIT_LETTERS_WORD'; word: string }
   | { type: 'SUBMIT_NUMBERS_ANSWER'; answer: number; steps: import('../types/game').SolutionStep[] }
-  | { type: 'SUBMIT_CONUNDRUM_GUESS'; guess: string }
+  | { type: 'SUBMIT_CONUNDRUM_GUESS'; guess: string; timeRemaining: number }
+  | { type: 'SET_CONUNDRUM_AI'; solved: boolean; guessTime: number }
   | { type: 'TIMER_EXPIRED' }
   | { type: 'SET_ROUND_RESULTS'; playerScore: number; aiScore: number; extras?: Record<string, unknown> }
   | { type: 'NEXT_ROUND' }
@@ -91,8 +92,9 @@ function createConundrumRound(): ConundrumRoundState {
     scrambled,
     answer: word,
     playerGuess: '',
+    playerTimeRemaining: 0,
     aiSolved: false,
-    aiGuessTime: 30,
+    aiGuessTime: 0,
     playerScore: 0,
     aiScore: 0,
   };
@@ -263,6 +265,19 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         currentRoundState: {
           ...state.currentRoundState,
           playerGuess: action.guess.toUpperCase(),
+          playerTimeRemaining: action.timeRemaining,
+        },
+      };
+    }
+
+    case 'SET_CONUNDRUM_AI': {
+      if (state.currentRoundState?.type !== 'conundrum') return state;
+      return {
+        ...state,
+        currentRoundState: {
+          ...state.currentRoundState,
+          aiSolved: action.solved,
+          aiGuessTime: action.guessTime,
         },
       };
     }

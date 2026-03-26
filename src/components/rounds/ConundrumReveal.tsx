@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useGame } from '../../hooks/useGame';
 import { Button } from '../shared/Button';
-import { aiSolveConundrum } from '../../engine/aiOpponent';
 import { scoreConundrumRound } from '../../engine/scoring';
 import type { ConundrumRoundState } from '../../types/game';
 
@@ -14,17 +13,13 @@ export function ConundrumReveal() {
     if (revealed) return;
     setRevealed(true);
 
-    let aiSolved = false;
-    if (state.mode === 'fullgame') {
-      const aiResult = aiSolveConundrum(state.difficulty);
-      aiSolved = aiResult.solved;
-    }
-
-    const playerSubmittedFirst = round.playerGuess.length > 0;
+    // Use the AI result stored in the round state (set during ConundrumPlaying)
+    const playerElapsed = state.timerDuration - round.playerTimeRemaining;
+    const playerSubmittedFirst = round.playerGuess.length > 0 && (!round.aiSolved || playerElapsed < round.aiGuessTime);
 
     const scores = scoreConundrumRound(
       round.playerGuess,
-      aiSolved,
+      round.aiSolved,
       round.answer,
       playerSubmittedFirst,
     );
@@ -33,9 +28,9 @@ export function ConundrumReveal() {
       type: 'SET_ROUND_RESULTS',
       playerScore: scores.playerScore,
       aiScore: scores.aiScore,
-      extras: { aiSolved },
+      extras: { aiSolved: round.aiSolved, aiGuessTime: round.aiGuessTime },
     });
-  }, [revealed, round, state.mode, state.difficulty, dispatch]);
+  }, [revealed, round, state.timerDuration, dispatch]);
 
   if (!revealed || state.phase !== 'reveal') return null;
 
@@ -48,7 +43,7 @@ export function ConundrumReveal() {
       {/* The answer */}
       <div className="bg-[#0a1628] border-2 border-[#fbbf24] rounded-xl px-8 py-4">
         <div className="text-sm text-[#fbbf24] mb-1">The answer</div>
-        <div className="text-4xl font-bold text-white tracking-wider">{round.answer}</div>
+        <div className="text-4xl font-bold text-white tracking-wider">{round.answer.toUpperCase()}</div>
       </div>
 
       {/* Player result */}
@@ -74,9 +69,21 @@ export function ConundrumReveal() {
         <div className="bg-[#1a2d50] rounded-xl p-4 w-full max-w-md">
           <div className="text-sm text-blue-400 mb-1">AI</div>
           <div className="flex items-center justify-between">
-            <span className="text-2xl font-bold text-white">
-              {round.aiSolved ? round.answer : '(did not solve)'}
-            </span>
+            <div>
+              <span className="text-2xl font-bold text-white">
+                {round.aiSolved ? round.answer.toUpperCase() : '(did not solve)'}
+              </span>
+              {round.aiSolved && (
+                <div className="text-xs text-blue-400 mt-1">
+                  Buzzed in at {Math.round(round.aiGuessTime)}s
+                </div>
+              )}
+              {!round.aiSolved && (
+                <div className="text-xs text-blue-400/50 mt-1">
+                  Would have buzzed in at {Math.round(round.aiGuessTime)}s (wrong)
+                </div>
+              )}
+            </div>
             <span className="text-2xl font-bold text-[#fbbf24]">+{round.aiScore}</span>
           </div>
         </div>
