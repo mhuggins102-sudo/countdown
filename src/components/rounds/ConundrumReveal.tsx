@@ -123,7 +123,7 @@ export function ConundrumReveal() {
                     {oppCorrect ? 'Correct!' : 'Wrong'}
                   </span>
                 )}
-                <span className="text-2xl font-bold text-[#fbbf24]">+{opponentResult.score}</span>
+                <span className="text-2xl font-bold text-[#fbbf24]">+{round.aiScore}</span>
               </div>
             </div>
           </div>

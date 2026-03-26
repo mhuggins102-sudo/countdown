@@ -80,17 +80,28 @@ export function LettersReveal() {
       )}
 
       {/* Challenger result */}
-      {hasOpponent && opponentResult && (
-        <div className="bg-[#1a2d50] rounded-xl p-4 w-full max-w-md">
-          <div className="text-sm text-purple-400 mb-1">{opponentName}'s word</div>
-          <div className="flex items-center justify-between">
-            <span className="text-2xl font-bold text-white">
-              {opponentResult.answer || '(none)'}
-            </span>
-            <span className="text-2xl font-bold text-[#fbbf24]">+{opponentResult.score}</span>
+      {hasOpponent && opponentResult && (() => {
+        const oppWord = opponentResult.answer || '';
+        const oppValid = oppWord.length > 0 && isValidWord(oppWord) && canFormWord(oppWord, round.letters);
+        return (
+          <div className="bg-[#1a2d50] rounded-xl p-4 w-full max-w-md">
+            <div className="text-sm text-purple-400 mb-1">{opponentName}'s word</div>
+            <div className="flex items-center justify-between">
+              <span className="text-2xl font-bold text-white">
+                {oppWord || '(none)'}
+              </span>
+              <div className="flex items-center gap-2">
+                {oppWord && (
+                  <span className={`text-sm ${oppValid ? 'text-green-400' : 'text-red-400'}`}>
+                    {oppValid ? 'Valid' : 'Invalid'}
+                  </span>
+                )}
+                <span className="text-2xl font-bold text-[#fbbf24]">+{round.aiScore}</span>
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Best word (Dictionary Corner) */}
       <div className="bg-[#0a1628] border border-[#2a4a7f] rounded-xl p-4 w-full max-w-md">

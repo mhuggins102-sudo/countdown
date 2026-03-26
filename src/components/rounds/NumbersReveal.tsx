@@ -128,7 +128,7 @@ export function NumbersReveal() {
                   </span>
                 )}
               </div>
-              <span className="text-2xl font-bold text-[#fbbf24]">+{opponentResult.score}</span>
+              <span className="text-2xl font-bold text-[#fbbf24]">+{round.aiScore}</span>
             </div>
             {opponentResult.steps && opponentResult.steps.length > 0 && (
               <StepsWithHighlights steps={opponentResult.steps as SolutionStep[]} originalNumbers={round.numbers} target={round.target} />

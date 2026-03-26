@@ -76,7 +76,7 @@ export function GameApp() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-8 px-4">
         <div className="text-center">
-          <h1 className="text-5xl md:text-8xl font-extrabold tracking-tight">
+          <h1 className="text-[3.5rem] md:text-8xl font-extrabold tracking-tight">
             <span className="text-[#3b82f6]">COUNT</span>
             <span className="text-[#fbbf24]">DOWN</span>
           </h1>
