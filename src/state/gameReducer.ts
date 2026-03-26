@@ -29,7 +29,7 @@ export type GameAction =
   | { type: 'TICK' }
   | { type: 'SUBMIT_LETTERS_WORD'; word: string }
   | { type: 'SUBMIT_NUMBERS_ANSWER'; answer: number; steps: import('../types/game').SolutionStep[] }
-  | { type: 'SUBMIT_CONUNDRUM_GUESS'; guess: string; timeRemaining: number }
+  | { type: 'SUBMIT_CONUNDRUM_GUESS'; guess: string; timeRemaining: number; keepTimer?: boolean }
   | { type: 'SET_CONUNDRUM_AI'; solved: boolean; guessTime: number }
   | { type: 'TIMER_EXPIRED' }
   | { type: 'SET_ROUND_RESULTS'; playerScore: number; aiScore: number; extras?: Record<string, unknown> }
@@ -366,7 +366,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       if (state.currentRoundState?.type !== 'conundrum') return state;
       return {
         ...state,
-        timerRunning: false,
+        timerRunning: action.keepTimer ? state.timerRunning : false,
         currentRoundState: {
           ...state.currentRoundState,
           playerGuess: action.guess.toUpperCase(),

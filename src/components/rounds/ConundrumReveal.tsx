@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useGame } from '../../hooks/useGame';
 import { Button } from '../shared/Button';
-import { scoreConundrumRound } from '../../engine/scoring';
+import { scoreConundrumRound, isConundrumCorrect } from '../../engine/scoring';
 import type { ConundrumRoundState } from '../../types/game';
 import { useChallengeOpponent } from '../../hooks/useChallengeOpponent';
 
@@ -20,8 +20,8 @@ export function ConundrumReveal() {
 
     if (hasOpponent && opponentResult) {
       // P2 challenge: head-to-head conundrum scoring
-      const playerCorrect = round.playerGuess.toUpperCase() === round.answer.toUpperCase();
-      const oppCorrect = opponentResult.answer.toUpperCase() === round.answer.toUpperCase();
+      const playerCorrect = isConundrumCorrect(round.playerGuess, round.answer);
+      const oppCorrect = isConundrumCorrect(opponentResult.answer, round.answer);
 
       if (playerCorrect && oppCorrect) {
         // Both correct: compare time remaining (higher = faster)
@@ -59,7 +59,7 @@ export function ConundrumReveal() {
 
   if (!revealed || state.phase !== 'reveal') return null;
 
-  const playerCorrect = round.playerGuess.toUpperCase() === round.answer.toUpperCase();
+  const playerCorrect = isConundrumCorrect(round.playerGuess, round.answer);
 
   return (
     <div className="flex flex-col items-center gap-6 animate-fade-in">
@@ -109,7 +109,7 @@ export function ConundrumReveal() {
 
       {/* Challenger result */}
       {hasOpponent && opponentResult && (() => {
-        const oppCorrect = opponentResult.answer.toUpperCase() === round.answer.toUpperCase();
+        const oppCorrect = isConundrumCorrect(opponentResult.answer, round.answer);
         return (
           <div className="bg-[#1a2d50] rounded-xl p-4 w-full max-w-md">
             <div className="text-sm text-purple-400 mb-1">{opponentName}'s guess</div>

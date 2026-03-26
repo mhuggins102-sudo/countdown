@@ -5,6 +5,7 @@ import { LetterTile } from '../shared/LetterTile';
 import { Timer } from '../shared/Timer';
 import { Button } from '../shared/Button';
 import { aiSolveConundrum } from '../../engine/aiOpponent';
+import { isConundrumCorrect } from '../../engine/scoring';
 import type { ConundrumRoundState } from '../../types/game';
 import { useChallengeOpponent } from '../../hooks/useChallengeOpponent';
 
@@ -13,6 +14,7 @@ export function ConundrumPlaying() {
   const round = state.currentRoundState as ConundrumRoundState;
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [submitted, setSubmitted] = useState(false);
+  const [playerWrong, setPlayerWrong] = useState(false);
   const [aiBuzzed, setAiBuzzed] = useState(false);
   const aiStored = useRef(false);
   const { hasOpponent, opponentName, result: opponentResult } = useChallengeOpponent();
@@ -22,7 +24,7 @@ export function ConundrumPlaying() {
 
   // Determine if opponent (AI or P1) solved and when
   const opponentCorrect = hasOpponent && opponentResult
-    ? opponentResult.answer.toUpperCase() === round.answer.toUpperCase()
+    ? isConundrumCorrect(opponentResult.answer, round.answer)
     : false;
   const opponentBuzzTime = hasOpponent && opponentResult && opponentCorrect
     ? state.timerDuration - (opponentResult.timeRemaining ?? 0)
@@ -43,16 +45,21 @@ export function ConundrumPlaying() {
   }, [state.difficulty, state.timerDuration, hasOpponent, opponentCorrect, opponentBuzzTime, dispatch]);
 
   // Watch for AI/opponent buzz-in: when elapsed time passes their guess time
+  // Allow AI to buzz in even after player submitted wrong (playerWrong === true)
   useEffect(() => {
-    if (aiBuzzed || submitted) return;
+    if (aiBuzzed) return;
+    // If player submitted correctly, no need for AI buzz-in
+    if (submitted && !playerWrong) return;
 
     // AI buzz-in
     if (!hasOpponent && round.aiSolved && round.aiGuessTime > 0) {
       const elapsed = state.timerDuration - state.timeRemaining;
       if (elapsed >= round.aiGuessTime) {
         setAiBuzzed(true);
-        setSubmitted(true);
-        dispatch({ type: 'SUBMIT_CONUNDRUM_GUESS', guess: '', timeRemaining: state.timeRemaining });
+        if (!submitted) {
+          setSubmitted(true);
+          dispatch({ type: 'SUBMIT_CONUNDRUM_GUESS', guess: '', timeRemaining: state.timeRemaining });
+        }
       }
     }
 
@@ -61,14 +68,18 @@ export function ConundrumPlaying() {
       const elapsed = state.timerDuration - state.timeRemaining;
       if (elapsed >= opponentBuzzTime) {
         setAiBuzzed(true);
-        setSubmitted(true);
-        dispatch({ type: 'SUBMIT_CONUNDRUM_GUESS', guess: '', timeRemaining: state.timeRemaining });
+        if (!submitted) {
+          setSubmitted(true);
+          dispatch({ type: 'SUBMIT_CONUNDRUM_GUESS', guess: '', timeRemaining: state.timeRemaining });
+        }
       }
     }
-  }, [state.timeRemaining, state.timerDuration, round.aiGuessTime, round.aiSolved, aiBuzzed, submitted, hasOpponent, opponentCorrect, opponentBuzzTime, dispatch]);
+  }, [state.timeRemaining, state.timerDuration, round.aiGuessTime, round.aiSolved, aiBuzzed, submitted, playerWrong, hasOpponent, opponentCorrect, opponentBuzzTime, dispatch]);
 
   // Transition to reveal after submission or buzz-in
   useEffect(() => {
+    // If player was wrong but AI hasn't buzzed yet, keep timer running (don't transition)
+    if (playerWrong && !aiBuzzed) return;
     if (submitted && state.phase === 'playing') {
       const delay = aiBuzzed ? 2500 : 1500;
       const timer = setTimeout(() => {
@@ -76,20 +87,27 @@ export function ConundrumPlaying() {
       }, delay);
       return () => clearTimeout(timer);
     }
-  }, [submitted, aiBuzzed, state.phase, dispatch]);
+  }, [submitted, playerWrong, aiBuzzed, state.phase, dispatch]);
 
+  const aiMightBuzzIn = (!hasOpponent && state.difficulty !== 'off') || (hasOpponent && opponentCorrect);
   const doSubmit = useCallback((guess: string) => {
     if (!submitted) {
+      const correct = isConundrumCorrect(guess, round.answer);
       setSubmitted(true);
-      dispatch({ type: 'SUBMIT_CONUNDRUM_GUESS', guess, timeRemaining: state.timeRemaining });
+      // If wrong and AI/opponent might still buzz in, keep timer running
+      const keepTimer = !correct && aiMightBuzzIn;
+      if (!correct) {
+        setPlayerWrong(true);
+      }
+      dispatch({ type: 'SUBMIT_CONUNDRUM_GUESS', guess, timeRemaining: state.timeRemaining, keepTimer });
     }
-  }, [submitted, dispatch, state.timeRemaining]);
+  }, [submitted, round.answer, aiMightBuzzIn, dispatch, state.timeRemaining]);
 
-  // Auto-submit when all 9 tiles selected and word matches answer
+  // Auto-submit when all 9 tiles selected and word is a valid anagram
   useEffect(() => {
     if (selectedIndices.length === 9 && !submitted) {
       const word = selectedIndices.map((i) => scrambledLetters[i]).join('');
-      if (word.toUpperCase() === round.answer.toUpperCase()) {
+      if (isConundrumCorrect(word, round.answer)) {
         doSubmit(word);
       }
     }
@@ -98,6 +116,9 @@ export function ConundrumPlaying() {
   useTimer(() => {
     if (!submitted) {
       doSubmit(currentWord);
+    } else if (playerWrong) {
+      // Player submitted wrong and timer ran out with no AI buzz — go to reveal
+      dispatch({ type: 'TIMER_EXPIRED' });
     }
   });
 
@@ -194,9 +215,14 @@ export function ConundrumPlaying() {
       )}
 
       {submitted && !aiBuzzed && (
-        <p className="text-blue-300 animate-fade-in">
-          Your answer: <span className="font-bold text-white">{currentWord.toUpperCase() || '(no answer)'}</span>
-        </p>
+        <div className="text-center animate-fade-in">
+          <p className="text-blue-300">
+            Your answer: <span className="font-bold text-white">{round.playerGuess || '(no answer)'}</span>
+          </p>
+          {playerWrong && (
+            <p className="text-red-400 text-sm mt-1">Incorrect — time continues...</p>
+          )}
+        </div>
       )}
     </div>
   );
