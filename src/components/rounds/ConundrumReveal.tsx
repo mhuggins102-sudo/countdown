@@ -71,16 +71,11 @@ export function ConundrumReveal() {
           <div className="flex items-center justify-between">
             <div>
               <span className="text-2xl font-bold text-white">
-                {round.aiSolved ? round.answer.toUpperCase() : '(did not solve)'}
+                {round.aiSolved ? round.answer.toUpperCase() : "Didn't buzz in"}
               </span>
               {round.aiSolved && (
                 <div className="text-xs text-blue-400 mt-1">
                   Buzzed in at {Math.round(round.aiGuessTime)}s
-                </div>
-              )}
-              {!round.aiSolved && (
-                <div className="text-xs text-blue-400/50 mt-1">
-                  Would have buzzed in at {Math.round(round.aiGuessTime)}s (wrong)
                 </div>
               )}
             </div>

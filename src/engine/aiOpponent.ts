@@ -93,6 +93,7 @@ export function aiSolveConundrum(
   }
 
   const solved = Math.random() < solveChance;
+  if (!solved) return { solved: false, guessTime: 0 };
   // Weighted toward minTime using floor-based sqrt distribution
   const guessTime = minTime + Math.floor((maxTime - minTime) * (1 - Math.sqrt(Math.random())));
 
