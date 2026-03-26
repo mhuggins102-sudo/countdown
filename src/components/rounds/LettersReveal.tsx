@@ -17,7 +17,7 @@ export function LettersReveal() {
     setRevealed(true);
 
     // Compute AI word and best word
-    const aiWord = state.mode === 'fullgame'
+    const aiWord = state.difficulty !== 'off'
       ? aiPickWord(round.letters, state.difficulty)
       : '';
     const bestWord = findLongestWord(round.letters);
@@ -64,7 +64,7 @@ export function LettersReveal() {
       </div>
 
       {/* AI result (only in full game) */}
-      {state.mode === 'fullgame' && (
+      {state.difficulty !== 'off' && (
         <div className="bg-[#1a2d50] rounded-xl p-4 w-full max-w-md">
           <div className="text-sm text-blue-400 mb-1">AI's word</div>
           <div className="flex items-center justify-between">

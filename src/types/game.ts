@@ -1,6 +1,7 @@
 export type RoundType = 'letters' | 'numbers' | 'conundrum';
 export type RoundPhase = 'picking' | 'playing' | 'reveal';
 export type Difficulty = 'easy' | 'medium' | 'hard';
+export type DifficultyOrOff = Difficulty | 'off';
 export type GameMode = 'freeplay' | 'fullgame';
 export type Screen = 'menu' | 'difficulty' | 'freeplay' | 'playing' | 'gameover';
 
@@ -55,7 +56,7 @@ export type RoundState = LettersRoundState | NumbersRoundState | ConundrumRoundS
 
 export interface GameState {
   mode: GameMode;
-  difficulty: Difficulty;
+  difficulty: DifficultyOrOff;
   currentRound: number;
   phase: RoundPhase;
   playerTotalScore: number;

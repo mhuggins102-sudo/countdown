@@ -18,7 +18,7 @@ export function NumbersReveal() {
     setRevealed(true);
 
     const { steps } = solveNumbers(round.numbers, round.target);
-    const aiAnswer = state.mode === 'fullgame'
+    const aiAnswer = state.difficulty !== 'off'
       ? aiPickNumber(round.numbers, round.target, state.difficulty)
       : null;
     const scores = scoreNumbersRound(round.playerAnswer, aiAnswer, round.target);
@@ -82,7 +82,7 @@ export function NumbersReveal() {
       </div>
 
       {/* AI result */}
-      {state.mode === 'fullgame' && (
+      {state.difficulty !== 'off' && (
         <div className="bg-[#1a2d50] rounded-xl p-4 w-full max-w-md">
           <div className="text-sm text-blue-400 mb-1">AI's answer</div>
           <div className="flex items-center justify-between">

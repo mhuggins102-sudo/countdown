@@ -2,6 +2,7 @@ import type {
   GameState,
   RoundType,
   Difficulty,
+  DifficultyOrOff,
   LettersRoundState,
   NumbersRoundState,
   ConundrumRoundState,
@@ -14,7 +15,7 @@ import { shuffle } from '../utils/shuffle';
 
 export type GameAction =
   | { type: 'START_FULL_GAME'; difficulty: Difficulty; timerDuration: number }
-  | { type: 'START_FREEPLAY'; roundType: RoundType; timerDuration: number }
+  | { type: 'START_FREEPLAY'; roundType: RoundType; timerDuration: number; difficulty: DifficultyOrOff }
   | { type: 'INIT_ROUND' }
   | { type: 'PICK_LETTER'; letter: string; isConsonant: boolean }
   | { type: 'PICK_LARGE_COUNT'; count: number }
@@ -52,7 +53,7 @@ function isPlayerPickingRound(roundIndex: number): boolean {
   return roundIndex % 2 === 0;
 }
 
-function createLettersRound(roundIndex: number, isFreeplay: boolean): LettersRoundState {
+function createLettersRound(roundIndex: number, aiOff: boolean): LettersRoundState {
   return {
     type: 'letters',
     letters: [],
@@ -63,11 +64,11 @@ function createLettersRound(roundIndex: number, isFreeplay: boolean): LettersRou
     bestWord: '',
     playerScore: 0,
     aiScore: 0,
-    isPlayerPicking: isFreeplay || isPlayerPickingRound(roundIndex),
+    isPlayerPicking: aiOff || isPlayerPickingRound(roundIndex),
   };
 }
 
-function createNumbersRound(roundIndex: number, isFreeplay: boolean): NumbersRoundState {
+function createNumbersRound(roundIndex: number, aiOff: boolean): NumbersRoundState {
   return {
     type: 'numbers',
     numbers: [],
@@ -80,7 +81,7 @@ function createNumbersRound(roundIndex: number, isFreeplay: boolean): NumbersRou
     solution: [],
     playerScore: 0,
     aiScore: 0,
-    isPlayerPicking: isFreeplay || isPlayerPickingRound(roundIndex),
+    isPlayerPicking: aiOff || isPlayerPickingRound(roundIndex),
   };
 }
 
@@ -100,10 +101,10 @@ function createConundrumRound(): ConundrumRoundState {
   };
 }
 
-function createRoundState(roundType: RoundType, roundIndex: number, isFreeplay: boolean) {
+function createRoundState(roundType: RoundType, roundIndex: number, aiOff: boolean) {
   switch (roundType) {
-    case 'letters': return createLettersRound(roundIndex, isFreeplay);
-    case 'numbers': return createNumbersRound(roundIndex, isFreeplay);
+    case 'letters': return createLettersRound(roundIndex, aiOff);
+    case 'numbers': return createNumbersRound(roundIndex, aiOff);
     case 'conundrum': return createConundrumRound();
   }
 }
@@ -127,13 +128,15 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return {
         ...initialState,
         mode: 'freeplay',
+        difficulty: action.difficulty,
         screen: 'playing',
         freeplayType: action.roundType,
         currentRound: 0,
-        phase: 'picking',
+        phase: action.roundType === 'conundrum' ? 'playing' : 'picking',
+        timerRunning: action.roundType === 'conundrum',
         timerDuration: action.timerDuration,
         timeRemaining: action.timerDuration,
-        currentRoundState: createRoundState(action.roundType, 0, true),
+        currentRoundState: createRoundState(action.roundType, 0, action.difficulty === 'off'),
       };
 
     case 'INIT_ROUND': {
@@ -145,7 +148,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         phase: 'picking',
         timerRunning: false,
         timeRemaining: state.timerDuration,
-        currentRoundState: createRoundState(roundType, state.currentRound, state.mode === 'freeplay'),
+        currentRoundState: createRoundState(roundType, state.currentRound, state.difficulty === 'off'),
       };
     }
 
@@ -331,7 +334,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         phase: roundType === 'conundrum' ? 'playing' : 'picking',
         timerRunning: roundType === 'conundrum',
         timeRemaining: state.timerDuration,
-        currentRoundState: createRoundState(roundType, nextRound, state.mode === 'freeplay'),
+        currentRoundState: createRoundState(roundType, nextRound, state.difficulty === 'off'),
       };
     }
 

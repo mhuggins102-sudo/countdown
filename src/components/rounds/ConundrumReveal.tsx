@@ -65,7 +65,7 @@ export function ConundrumReveal() {
       </div>
 
       {/* AI result */}
-      {state.mode === 'fullgame' && (
+      {state.difficulty !== 'off' && (
         <div className="bg-[#1a2d50] rounded-xl p-4 w-full max-w-md">
           <div className="text-sm text-blue-400 mb-1">AI</div>
           <div className="flex items-center justify-between">

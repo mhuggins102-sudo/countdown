@@ -114,6 +114,12 @@ export function GameApp() {
           <h2 className="text-lg font-semibold text-blue-300 capitalize">
             Free Play: {roundType}
           </h2>
+          {state.difficulty !== 'off' && (
+            <div className="flex items-center gap-3 text-sm">
+              <span className="text-blue-300">You: <span className="text-white font-bold">{state.playerTotalScore}</span></span>
+              <span className="text-blue-300">AI: <span className="text-white font-bold">{state.aiTotalScore}</span></span>
+            </div>
+          )}
           <button
             onClick={() => {
               dispatch({ type: 'RETURN_TO_MENU' });

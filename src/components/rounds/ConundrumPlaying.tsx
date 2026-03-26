@@ -20,7 +20,7 @@ export function ConundrumPlaying() {
 
   // Calculate and store AI conundrum result on mount
   useEffect(() => {
-    if (state.mode === 'fullgame' && !aiStored.current) {
+    if (state.difficulty !== 'off' && !aiStored.current) {
       aiStored.current = true;
       const aiResult = aiSolveConundrum(state.difficulty, state.timerDuration);
       dispatch({ type: 'SET_CONUNDRUM_AI', solved: aiResult.solved, guessTime: aiResult.guessTime });
