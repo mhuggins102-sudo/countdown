@@ -34,6 +34,7 @@ export interface NumbersRoundState {
   playerAnswer: number | null;
   playerSteps: SolutionStep[];
   aiAnswer: number | null;
+  aiSteps: SolutionStep[];
   solution: SolutionStep[];
   playerScore: number;
   aiScore: number;

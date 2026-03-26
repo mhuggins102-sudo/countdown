@@ -78,6 +78,7 @@ function createNumbersRound(roundIndex: number, aiOff: boolean): NumbersRoundSta
     playerAnswer: null,
     playerSteps: [],
     aiAnswer: null,
+    aiSteps: [],
     solution: [],
     playerScore: 0,
     aiScore: 0,

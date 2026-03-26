@@ -116,3 +116,8 @@ export function solveNumbers(numbers: number[], target: number): { closest: numb
   const result = solve(numbers, target);
   return { closest: result.value, steps: pruneUnusedSteps(result.steps) };
 }
+
+export function solveForTarget(numbers: number[], target: number): { value: number; steps: SolutionStep[]; distance: number } {
+  const result = solve(numbers, target);
+  return { value: result.value, steps: pruneUnusedSteps(result.steps), distance: result.distance };
+}

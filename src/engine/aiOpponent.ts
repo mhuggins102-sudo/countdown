@@ -1,6 +1,6 @@
-import type { Difficulty } from '../types/game';
+import type { Difficulty, SolutionStep } from '../types/game';
 import { findAllValidWords } from './wordFinder';
-import { solveNumbers } from './numbersSolver';
+import { solveNumbers, solveForTarget } from './numbersSolver';
 
 export function aiPickWord(
   letters: string[],
@@ -49,8 +49,8 @@ export function aiPickNumber(
   numbers: number[],
   target: number,
   difficulty: Difficulty,
-): number {
-  const { closest } = solveNumbers(numbers, target);
+): { answer: number; steps: SolutionStep[] } {
+  const { closest, steps: bestSteps } = solveNumbers(numbers, target);
 
   let maxOffset: number;
   switch (difficulty) {
@@ -60,9 +60,26 @@ export function aiPickNumber(
   }
 
   const offset = weightedOffset(maxOffset);
-  if (offset === 0) return closest;
-  const result = closest + (Math.random() < 0.5 ? offset : -offset);
-  return Math.max(1, result);
+  if (offset === 0) return { answer: closest, steps: bestSteps };
+
+  // Try to find steps that produce the intended offset answer
+  const sign = Math.random() < 0.5 ? 1 : -1;
+  const intendedAnswer = Math.max(1, closest + sign * offset);
+  const result = solveForTarget(numbers, intendedAnswer);
+  if (result.distance === 0) {
+    return { answer: result.value, steps: result.steps };
+  }
+
+  // If we can't hit the intended answer exactly, try the other direction
+  const altAnswer = Math.max(1, closest - sign * offset);
+  const altResult = solveForTarget(numbers, altAnswer);
+  if (altResult.distance === 0) {
+    return { answer: altResult.value, steps: altResult.steps };
+  }
+
+  // Use whichever got closer to its intended target, expanding outward if needed
+  const best = result.distance <= altResult.distance ? result : altResult;
+  return { answer: best.value, steps: best.steps };
 }
 
 export function aiSolveConundrum(

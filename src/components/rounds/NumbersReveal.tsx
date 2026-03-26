@@ -18,9 +18,10 @@ export function NumbersReveal() {
     setRevealed(true);
 
     const { steps } = solveNumbers(round.numbers, round.target);
-    const aiAnswer = state.difficulty !== 'off'
+    const aiResult = state.difficulty !== 'off'
       ? aiPickNumber(round.numbers, round.target, state.difficulty)
       : null;
+    const aiAnswer = aiResult?.answer ?? null;
     const scores = scoreNumbersRound(round.playerAnswer, aiAnswer, round.target);
 
     dispatch({
@@ -29,6 +30,7 @@ export function NumbersReveal() {
       aiScore: scores.aiScore,
       extras: {
         aiAnswer,
+        aiSteps: aiResult?.steps ?? [],
         solution: steps,
       },
     });
@@ -101,6 +103,15 @@ export function NumbersReveal() {
             </div>
             <span className="text-2xl font-bold text-[#fbbf24]">+{round.aiScore}</span>
           </div>
+          {round.aiSteps.length > 0 && (
+            <div className="mt-2 pt-2 border-t border-[#2a4a7f]/50 font-mono text-sm space-y-1">
+              {round.aiSteps.map((step: SolutionStep, i: number) => (
+                <div key={i} className="text-blue-200">
+                  {step.a} {displayOp(step.op)} {step.b} = {step.result}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
