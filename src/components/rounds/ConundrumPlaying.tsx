@@ -12,6 +12,7 @@ export function ConundrumPlaying() {
   const round = state.currentRoundState as ConundrumRoundState;
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [submitted, setSubmitted] = useState(false);
+  const [aiBuzzed, setAiBuzzed] = useState(false);
   const aiStored = useRef(false);
 
   const scrambledLetters = round.scrambled.split('');
@@ -25,6 +26,29 @@ export function ConundrumPlaying() {
       dispatch({ type: 'SET_CONUNDRUM_AI', solved: aiResult.solved, guessTime: aiResult.guessTime });
     }
   }, [state.mode, state.difficulty, dispatch]);
+
+  // Watch for AI buzz-in: when elapsed time passes aiGuessTime
+  useEffect(() => {
+    if (aiBuzzed || submitted || !round.aiSolved || round.aiGuessTime === 0) return;
+    const elapsed = state.timerDuration - state.timeRemaining;
+    if (elapsed >= round.aiGuessTime) {
+      // AI buzzes in with correct answer — freeze the game
+      setAiBuzzed(true);
+      setSubmitted(true);
+      dispatch({ type: 'SUBMIT_CONUNDRUM_GUESS', guess: '', timeRemaining: state.timeRemaining });
+    }
+  }, [state.timeRemaining, state.timerDuration, round.aiGuessTime, round.aiSolved, aiBuzzed, submitted, dispatch]);
+
+  // Transition to reveal after submission or AI buzz-in
+  useEffect(() => {
+    if (submitted && state.phase === 'playing') {
+      const delay = aiBuzzed ? 2500 : 1500;
+      const timer = setTimeout(() => {
+        dispatch({ type: 'TIMER_EXPIRED' });
+      }, delay);
+      return () => clearTimeout(timer);
+    }
+  }, [submitted, aiBuzzed, state.phase, dispatch]);
 
   const doSubmit = useCallback((guess: string) => {
     if (!submitted) {
@@ -42,16 +66,6 @@ export function ConundrumPlaying() {
       }
     }
   }, [selectedIndices, scrambledLetters, round.answer, submitted, doSubmit]);
-
-  // When submitted, wait briefly then transition to reveal
-  useEffect(() => {
-    if (submitted && state.phase === 'playing') {
-      const timer = setTimeout(() => {
-        dispatch({ type: 'TIMER_EXPIRED' });
-      }, 1500);
-      return () => clearTimeout(timer);
-    }
-  }, [submitted, state.phase, dispatch]);
 
   useTimer(() => {
     if (!submitted) {
@@ -87,6 +101,15 @@ export function ConundrumPlaying() {
 
       <Timer timeRemaining={state.timeRemaining} isRunning={state.timerRunning} totalTime={state.timerDuration} />
 
+      {/* AI buzz-in overlay */}
+      {aiBuzzed && (
+        <div className="bg-red-500/20 border-2 border-red-500 rounded-xl px-6 py-4 text-center animate-fade-in w-full max-w-md">
+          <div className="text-red-400 font-bold text-lg">AI buzzed in!</div>
+          <div className="text-white text-2xl font-bold tracking-wider mt-1">{round.answer.toUpperCase()}</div>
+          <div className="text-red-300 text-sm mt-1">at {Math.round(round.aiGuessTime)}s</div>
+        </div>
+      )}
+
       {/* Scrambled letter tiles */}
       <div className="flex gap-2 flex-wrap justify-center">
         {scrambledLetters.map((letter, i) => (
@@ -101,25 +124,29 @@ export function ConundrumPlaying() {
         ))}
       </div>
 
-      <p className="text-blue-300 text-sm">Tap tiles to unscramble the 9-letter word!</p>
+      {!aiBuzzed && (
+        <p className="text-blue-300 text-sm">Tap tiles to unscramble the 9-letter word!</p>
+      )}
 
       {/* Current word display */}
-      <div className="min-h-16 flex items-center gap-1">
-        {currentWord.length > 0 ? (
-          <div className="flex gap-1">
-            {currentWord.split('').map((letter, i) => (
-              <span
-                key={i}
-                className="w-10 h-10 bg-[#fbbf24] text-[#0a1628] rounded font-bold text-xl flex items-center justify-center"
-              >
-                {letter.toUpperCase()}
-              </span>
-            ))}
-          </div>
-        ) : (
-          <span className="text-blue-400/50 text-lg">Tap tiles to spell the word</span>
-        )}
-      </div>
+      {!aiBuzzed && (
+        <div className="min-h-16 flex items-center gap-1">
+          {currentWord.length > 0 ? (
+            <div className="flex gap-1">
+              {currentWord.split('').map((letter, i) => (
+                <span
+                  key={i}
+                  className="w-10 h-10 bg-[#fbbf24] text-[#0a1628] rounded font-bold text-xl flex items-center justify-center"
+                >
+                  {letter.toUpperCase()}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <span className="text-blue-400/50 text-lg">Tap tiles to spell the word</span>
+          )}
+        </div>
+      )}
 
       {/* Action buttons */}
       {!submitted && (
@@ -136,7 +163,7 @@ export function ConundrumPlaying() {
         </div>
       )}
 
-      {submitted && (
+      {submitted && !aiBuzzed && (
         <p className="text-blue-300 animate-fade-in">
           Your answer: <span className="font-bold text-white">{currentWord.toUpperCase() || '(no answer)'}</span>
         </p>
