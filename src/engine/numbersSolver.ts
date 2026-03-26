@@ -77,7 +77,42 @@ export function solve(numbers: number[], target: number): SolverResult {
   return best;
 }
 
+/**
+ * Remove steps whose results are never used in the chain leading to the final answer.
+ * Works backwards from the last step, tracking which values are needed as inputs.
+ */
+function pruneUnusedSteps(steps: SolutionStep[]): SolutionStep[] {
+  if (steps.length === 0) return steps;
+
+  const needed = new Array(steps.length).fill(false);
+  needed[steps.length - 1] = true;
+
+  // Track how many of each value we still need to find a source for
+  const valueCounts = new Map<number, number>();
+  const addNeeded = (val: number) => valueCounts.set(val, (valueCounts.get(val) || 0) + 1);
+  const consumeNeeded = (val: number): boolean => {
+    const count = valueCounts.get(val) || 0;
+    if (count > 0) { valueCounts.set(val, count - 1); return true; }
+    return false;
+  };
+
+  // Seed with inputs of the final step
+  addNeeded(steps[steps.length - 1].a);
+  addNeeded(steps[steps.length - 1].b);
+
+  // Walk backwards — if a step's result is needed, mark it and require its inputs
+  for (let i = steps.length - 2; i >= 0; i--) {
+    if (consumeNeeded(steps[i].result)) {
+      needed[i] = true;
+      addNeeded(steps[i].a);
+      addNeeded(steps[i].b);
+    }
+  }
+
+  return steps.filter((_, i) => needed[i]);
+}
+
 export function solveNumbers(numbers: number[], target: number): { closest: number; steps: SolutionStep[] } {
   const result = solve(numbers, target);
-  return { closest: result.value, steps: result.steps };
+  return { closest: result.value, steps: pruneUnusedSteps(result.steps) };
 }

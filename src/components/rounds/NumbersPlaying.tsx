@@ -216,6 +216,7 @@ export function NumbersPlaying() {
             variant="gold"
             size="lg"
             onClick={() => doSubmit(false)}
+            disabled={currentAnswer === null}
           >
             Submit
           </Button>
