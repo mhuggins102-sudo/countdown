@@ -52,7 +52,7 @@ function isPlayerPickingRound(roundIndex: number): boolean {
   return roundIndex % 2 === 0;
 }
 
-function createLettersRound(roundIndex: number): LettersRoundState {
+function createLettersRound(roundIndex: number, isFreeplay: boolean): LettersRoundState {
   return {
     type: 'letters',
     letters: [],
@@ -63,11 +63,11 @@ function createLettersRound(roundIndex: number): LettersRoundState {
     bestWord: '',
     playerScore: 0,
     aiScore: 0,
-    isPlayerPicking: isPlayerPickingRound(roundIndex),
+    isPlayerPicking: isFreeplay || isPlayerPickingRound(roundIndex),
   };
 }
 
-function createNumbersRound(roundIndex: number): NumbersRoundState {
+function createNumbersRound(roundIndex: number, isFreeplay: boolean): NumbersRoundState {
   return {
     type: 'numbers',
     numbers: [],
@@ -80,7 +80,7 @@ function createNumbersRound(roundIndex: number): NumbersRoundState {
     solution: [],
     playerScore: 0,
     aiScore: 0,
-    isPlayerPicking: isPlayerPickingRound(roundIndex),
+    isPlayerPicking: isFreeplay || isPlayerPickingRound(roundIndex),
   };
 }
 
@@ -100,10 +100,10 @@ function createConundrumRound(): ConundrumRoundState {
   };
 }
 
-function createRoundState(roundType: RoundType, roundIndex: number) {
+function createRoundState(roundType: RoundType, roundIndex: number, isFreeplay: boolean) {
   switch (roundType) {
-    case 'letters': return createLettersRound(roundIndex);
-    case 'numbers': return createNumbersRound(roundIndex);
+    case 'letters': return createLettersRound(roundIndex, isFreeplay);
+    case 'numbers': return createNumbersRound(roundIndex, isFreeplay);
     case 'conundrum': return createConundrumRound();
   }
 }
@@ -120,7 +120,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         phase: 'picking',
         timerDuration: action.timerDuration,
         timeRemaining: action.timerDuration,
-        currentRoundState: createRoundState(ROUND_ORDER[0], 0),
+        currentRoundState: createRoundState(ROUND_ORDER[0], 0, false),
       };
 
     case 'START_FREEPLAY':
@@ -133,7 +133,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         phase: 'picking',
         timerDuration: action.timerDuration,
         timeRemaining: action.timerDuration,
-        currentRoundState: createRoundState(action.roundType, 0),
+        currentRoundState: createRoundState(action.roundType, 0, true),
       };
 
     case 'INIT_ROUND': {
@@ -145,7 +145,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         phase: 'picking',
         timerRunning: false,
         timeRemaining: state.timerDuration,
-        currentRoundState: createRoundState(roundType, state.currentRound),
+        currentRoundState: createRoundState(roundType, state.currentRound, state.mode === 'freeplay'),
       };
     }
 
@@ -331,7 +331,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         phase: roundType === 'conundrum' ? 'playing' : 'picking',
         timerRunning: roundType === 'conundrum',
         timeRemaining: state.timerDuration,
-        currentRoundState: createRoundState(roundType, nextRound),
+        currentRoundState: createRoundState(roundType, nextRound, state.mode === 'freeplay'),
       };
     }
 
