@@ -36,19 +36,19 @@ export function NumbersPlaying() {
 
   const lastStep = steps.length > 0 ? steps[steps.length - 1] : null;
   const currentAnswer = lastStep ? lastStep.result : null;
-  const allUsed = tiles.length <= 1;
 
   const doSubmit = useCallback((timerExpired: boolean) => {
     if (submitted) return;
     setSubmitted(true);
-    const answer = timerExpired && !allUsed ? -9999 : (currentAnswer ?? -9999);
-    const submittedSteps = timerExpired && !allUsed ? [] : steps;
+    // On timer expiry, submit best available: last calculation result, or no answer
+    const answer = currentAnswer ?? -9999;
+    const submittedSteps = currentAnswer !== null ? steps : [];
     dispatch({
       type: 'SUBMIT_NUMBERS_ANSWER',
       answer,
       steps: submittedSteps,
     });
-  }, [submitted, allUsed, currentAnswer, steps, dispatch]);
+  }, [submitted, currentAnswer, steps, dispatch]);
 
   useEffect(() => {
     if (submitted && state.phase === 'playing') {
