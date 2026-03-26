@@ -44,14 +44,17 @@ export function NumbersReveal() {
   const lastStep = round.solution.length > 0 ? round.solution[round.solution.length - 1] : null;
   const closest = lastStep ? lastStep.result : round.numbers[0] || 0;
 
+  const formatDist = (answer: number) => {
+    const diff = answer - round.target;
+    if (diff === 0) return 'exact!';
+    const absDiff = Math.abs(diff);
+    const direction = diff > 0 ? 'above' : 'below';
+    return <>{absDiff} {direction} <span className="text-[#fbbf24]">{round.target}</span></>;
+  };
+
   return (
     <div className="flex flex-col items-center gap-6 animate-fade-in">
       <h2 className="text-xl font-semibold text-blue-300">Round Results</h2>
-
-      {/* Target reminder */}
-      <div className="text-3xl font-bold text-[#fbbf24] tabular-nums">
-        Target: {round.target}
-      </div>
 
       {/* Player result */}
       <div className="bg-[#1a2d50] rounded-xl p-4 w-full max-w-md">
@@ -63,7 +66,7 @@ export function NumbersReveal() {
             </span>
             {playerDist !== null && (
               <span className="text-sm text-blue-300 ml-2">
-                ({playerDist === 0 ? 'exact!' : `off by ${playerDist}`})
+                ({formatDist(round.playerAnswer!)})
               </span>
             )}
           </div>
@@ -92,7 +95,7 @@ export function NumbersReveal() {
               </span>
               {aiDist !== null && (
                 <span className="text-sm text-blue-300 ml-2">
-                  ({aiDist === 0 ? 'exact!' : `off by ${aiDist}`})
+                  ({formatDist(round.aiAnswer!)})
                 </span>
               )}
             </div>
