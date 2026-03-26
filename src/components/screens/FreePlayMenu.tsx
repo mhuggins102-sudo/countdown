@@ -59,7 +59,7 @@ export function FreePlayMenu({ onBack, timerDuration }: { onBack: () => void; ti
         >
           <div className="text-xl font-bold text-white group-hover:text-[#fbbf24]">Numbers Round</div>
           <div className="text-sm text-blue-300 mt-1">
-            Use 6 numbers to reach a target with basic arithmetic
+            Combine 6 numbers to hit a target number
           </div>
         </button>
 
@@ -69,7 +69,7 @@ export function FreePlayMenu({ onBack, timerDuration }: { onBack: () => void; ti
         >
           <div className="text-xl font-bold text-white group-hover:text-[#fbbf24]">Conundrum</div>
           <div className="text-sm text-blue-300 mt-1">
-            Unscramble a 9-letter word before time runs out
+            Unscramble a 9-letter word in time
           </div>
         </button>
       </div>
