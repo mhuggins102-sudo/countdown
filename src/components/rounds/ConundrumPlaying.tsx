@@ -22,7 +22,7 @@ export function ConundrumPlaying() {
   useEffect(() => {
     if (state.mode === 'fullgame' && !aiStored.current) {
       aiStored.current = true;
-      const aiResult = aiSolveConundrum(state.difficulty);
+      const aiResult = aiSolveConundrum(state.difficulty, state.timerDuration);
       dispatch({ type: 'SET_CONUNDRUM_AI', solved: aiResult.solved, guessTime: aiResult.guessTime });
     }
   }, [state.mode, state.difficulty, dispatch]);

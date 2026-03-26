@@ -67,31 +67,34 @@ export function aiPickNumber(
 
 export function aiSolveConundrum(
   difficulty: Difficulty,
+  timerDuration: number,
 ): { solved: boolean; guessTime: number } {
+  const is60 = timerDuration >= 60;
   let solveChance: number;
   let minTime: number;
   let maxTime: number;
 
   switch (difficulty) {
     case 'easy':
-      solveChance = 0.2;
-      minTime = 10;
-      maxTime = 25;
+      solveChance = is60 ? 0.3 : 0.2;
+      minTime = 20;
+      maxTime = timerDuration;
       break;
     case 'medium':
-      solveChance = 0.5;
-      minTime = 5;
-      maxTime = 20;
+      solveChance = is60 ? 0.7 : 0.5;
+      minTime = 15;
+      maxTime = timerDuration;
       break;
     case 'hard':
-      solveChance = 0.8;
-      minTime = 2;
-      maxTime = 10;
+      solveChance = is60 ? 0.9 : 0.8;
+      minTime = 10;
+      maxTime = timerDuration;
       break;
   }
 
   const solved = Math.random() < solveChance;
-  const guessTime = minTime + Math.random() * (maxTime - minTime);
+  // Weighted toward minTime using floor-based sqrt distribution
+  const guessTime = minTime + Math.floor((maxTime - minTime) * (1 - Math.sqrt(Math.random())));
 
   return { solved, guessTime };
 }
