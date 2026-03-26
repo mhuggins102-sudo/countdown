@@ -38,8 +38,6 @@ export function ConundrumReveal() {
 
   return (
     <div className="flex flex-col items-center gap-6 animate-fade-in">
-      <h2 className="text-xl font-semibold text-[#fbbf24]">CONUNDRUM - Results</h2>
-
       {/* The answer */}
       <div className="bg-[#0a1628] border-2 border-[#fbbf24] rounded-xl px-8 py-4">
         <div className="text-sm text-[#fbbf24] mb-1">The answer</div>
