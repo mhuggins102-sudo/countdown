@@ -2,7 +2,7 @@ export type RoundType = 'letters' | 'numbers' | 'conundrum';
 export type RoundPhase = 'picking' | 'playing' | 'reveal';
 export type Difficulty = 'easy' | 'medium' | 'hard';
 export type DifficultyOrOff = Difficulty | 'off';
-export type GameMode = 'freeplay' | 'fullgame';
+export type GameMode = 'freeplay' | 'fullgame' | 'challenge';
 export type Screen = 'menu' | 'difficulty' | 'freeplay' | 'playing' | 'gameover';
 
 export interface SolutionStep {
@@ -55,6 +55,28 @@ export interface ConundrumRoundState {
 
 export type RoundState = LettersRoundState | NumbersRoundState | ConundrumRoundState;
 
+/** Per-round result stored for challenge replay */
+export interface ChallengeRoundResult {
+  roundType: RoundType;
+  /** Letters: word submitted; Numbers: answer number; Conundrum: guess */
+  answer: string;
+  score: number;
+  /** Numbers round: player steps */
+  steps?: SolutionStep[];
+  /** Conundrum: time remaining when submitted */
+  timeRemaining?: number;
+}
+
+export interface ChallengeData {
+  seed: number;
+  code: string;
+  timerDuration: number;
+  /** Player 1's results (present when playing as P2) */
+  opponentName: string;
+  opponentResults: ChallengeRoundResult[];
+  opponentTotalScore: number;
+}
+
 export interface GameState {
   mode: GameMode;
   difficulty: DifficultyOrOff;
@@ -69,6 +91,8 @@ export interface GameState {
   timeRemaining: number;
   timerDuration: number;
   freeplayType: RoundType | null;
+  /** Challenge mode data */
+  challengeData: ChallengeData | null;
 }
 
 export const ROUND_ORDER: RoundType[] = [

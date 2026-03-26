@@ -3,11 +3,13 @@ import { useGame } from '../../hooks/useGame';
 import { Button } from '../shared/Button';
 import { scoreConundrumRound } from '../../engine/scoring';
 import type { ConundrumRoundState } from '../../types/game';
+import { useChallengeOpponent } from '../../hooks/useChallengeOpponent';
 
 export function ConundrumReveal() {
   const { state, dispatch } = useGame();
   const round = state.currentRoundState as ConundrumRoundState;
   const [revealed, setRevealed] = useState(false);
+  const { hasOpponent, opponentName, result: opponentResult } = useChallengeOpponent();
 
   useEffect(() => {
     if (revealed) return;
@@ -81,6 +83,29 @@ export function ConundrumReveal() {
           </div>
         </div>
       )}
+
+      {/* Challenger result */}
+      {hasOpponent && opponentResult && (() => {
+        const oppCorrect = opponentResult.answer.toUpperCase() === round.answer.toUpperCase();
+        return (
+          <div className="bg-[#1a2d50] rounded-xl p-4 w-full max-w-md">
+            <div className="text-sm text-purple-400 mb-1">{opponentName}'s guess</div>
+            <div className="flex items-center justify-between">
+              <span className="text-2xl font-bold text-white">
+                {opponentResult.answer || '(no guess)'}
+              </span>
+              <div className="flex items-center gap-2">
+                {opponentResult.answer && (
+                  <span className={`text-sm ${oppCorrect ? 'text-green-400' : 'text-red-400'}`}>
+                    {oppCorrect ? 'Correct!' : 'Wrong'}
+                  </span>
+                )}
+                <span className="text-2xl font-bold text-[#fbbf24]">+{opponentResult.score}</span>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       <Button
         variant="primary"

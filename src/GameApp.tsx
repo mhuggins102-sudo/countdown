@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useGame } from './hooks/useGame';
 import { ROUND_ORDER, TIMER_DURATION } from './types/game';
+import { fetchChallenge } from './api/challengeApi';
 
 // Screens
 import { DifficultySelect } from './components/screens/DifficultySelect';
 import { FreePlayMenu } from './components/screens/FreePlayMenu';
+import { ChallengeMenu } from './components/screens/ChallengeMenu';
 import { GameOverScreen } from './components/screens/GameOverScreen';
 
 // Round components
@@ -20,12 +22,38 @@ import { ConundrumReveal } from './components/rounds/ConundrumReveal';
 // Shared
 import { ScoreBar } from './components/shared/ScoreBar';
 
-type MenuScreen = 'main' | 'difficulty' | 'freeplay';
+type MenuScreen = 'main' | 'difficulty' | 'freeplay' | 'challenge';
 
 export function GameApp() {
   const { state, dispatch } = useGame();
   const [menuScreen, setMenuScreen] = useState<MenuScreen>('main');
   const [timerDuration, setTimerDuration] = useState(TIMER_DURATION);
+
+  const checkedUrl = useRef(false);
+
+  // Handle ?challenge=CODE URL parameter
+  useEffect(() => {
+    if (checkedUrl.current) return;
+    checkedUrl.current = true;
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('challenge');
+    if (!code) return;
+    // Clear the URL param
+    window.history.replaceState({}, '', window.location.pathname);
+    // Fetch and join the challenge
+    fetchChallenge(code).then((challenge) => {
+      if (!challenge || challenge.p2Results) return;
+      dispatch({
+        type: 'START_CHALLENGE',
+        seed: challenge.seed,
+        code: challenge.code,
+        timerDuration: challenge.timerDuration,
+        opponentName: challenge.p1Name,
+        opponentResults: challenge.p1Results,
+        opponentTotalScore: challenge.p1TotalScore,
+      });
+    });
+  }, [dispatch]);
 
   const goToMainMenu = () => {
     dispatch({ type: 'RETURN_TO_MENU' });
@@ -39,6 +67,9 @@ export function GameApp() {
     }
     if (menuScreen === 'freeplay') {
       return <FreePlayMenu onBack={goToMainMenu} timerDuration={timerDuration} />;
+    }
+    if (menuScreen === 'challenge') {
+      return <ChallengeMenu onBack={goToMainMenu} timerDuration={timerDuration} />;
     }
 
     // Main menu with custom handlers
@@ -71,6 +102,12 @@ export function GameApp() {
             Full Game
           </button>
           <button
+            onClick={() => setMenuScreen('challenge')}
+            className="bg-gradient-to-r from-[#8b5cf6] to-[#6d28d9] hover:from-[#a78bfa] hover:to-[#8b5cf6] text-white shadow-lg shadow-purple-500/25 font-semibold rounded-lg transition-all duration-200 active:scale-95 px-8 py-4 text-xl"
+          >
+            Challenge a Friend
+          </button>
+          <button
             onClick={() => setMenuScreen('freeplay')}
             className="bg-[#3b82f6] hover:bg-[#2563eb] text-white shadow-lg shadow-blue-500/25 font-semibold rounded-lg transition-all duration-200 active:scale-95 px-8 py-4 text-xl"
           >
@@ -90,21 +127,24 @@ export function GameApp() {
   }
 
   // Playing screen
-  const roundType = state.mode === 'fullgame'
+  const isMultiRound = state.mode === 'fullgame' || state.mode === 'challenge';
+  const roundType = isMultiRound
     ? ROUND_ORDER[state.currentRound]
     : state.freeplayType;
-  const totalRounds = state.mode === 'fullgame' ? ROUND_ORDER.length : 0;
+  const totalRounds = isMultiRound ? ROUND_ORDER.length : 0;
 
   return (
     <div className="min-h-screen p-4 max-w-2xl mx-auto">
-      {/* Score bar (full game only) */}
-      {state.mode === 'fullgame' && (
+      {/* Score bar (full game + challenge) */}
+      {isMultiRound && (
         <ScoreBar
           playerScore={state.playerTotalScore}
           aiScore={state.aiTotalScore}
           currentRound={state.currentRound}
           totalRounds={totalRounds}
           roundType={roundType || ''}
+          isChallenge={state.mode === 'challenge'}
+          opponentName={state.challengeData?.opponentName}
         />
       )}
 

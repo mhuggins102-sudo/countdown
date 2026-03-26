@@ -7,11 +7,13 @@ import { aiPickNumber } from '../../engine/aiOpponent';
 import { scoreNumbersRound } from '../../engine/scoring';
 import { displayOp, getOriginalHighlights } from '../../engine/expressionEval';
 import type { NumbersRoundState, SolutionStep } from '../../types/game';
+import { useChallengeOpponent } from '../../hooks/useChallengeOpponent';
 
 export function NumbersReveal() {
   const { state, dispatch } = useGame();
   const round = state.currentRoundState as NumbersRoundState;
   const [revealed, setRevealed] = useState(false);
+  const { hasOpponent, opponentName, result: opponentResult } = useChallengeOpponent();
 
   useEffect(() => {
     if (revealed) return;
@@ -102,6 +104,33 @@ export function NumbersReveal() {
           )}
         </div>
       )}
+
+      {/* Challenger result */}
+      {hasOpponent && opponentResult && (() => {
+        const oppAnswer = opponentResult.answer ? Number(opponentResult.answer) : null;
+        const oppDist = oppAnswer !== null && !isNaN(oppAnswer) ? Math.abs(oppAnswer - round.target) : null;
+        return (
+          <div className="bg-[#1a2d50] rounded-xl p-4 w-full max-w-md">
+            <div className="text-sm text-purple-400 mb-1">{opponentName}'s answer</div>
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-2xl font-bold text-white tabular-nums">
+                  {oppAnswer ?? '(none)'}
+                </span>
+                {oppDist !== null && (
+                  <span className="text-sm text-blue-300 ml-2">
+                    ({formatDist(oppAnswer!)})
+                  </span>
+                )}
+              </div>
+              <span className="text-2xl font-bold text-[#fbbf24]">+{opponentResult.score}</span>
+            </div>
+            {opponentResult.steps && opponentResult.steps.length > 0 && (
+              <StepsWithHighlights steps={opponentResult.steps as SolutionStep[]} originalNumbers={round.numbers} target={round.target} />
+            )}
+          </div>
+        );
+      })()}
 
       {/* Optimal solution steps — hide if player or AI already got exact */}
       {playerDist !== 0 && aiDist !== 0 && (

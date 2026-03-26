@@ -6,16 +6,19 @@ import type {
   LettersRoundState,
   NumbersRoundState,
   ConundrumRoundState,
+  ChallengeData,
 } from '../types/game';
 import { ROUND_ORDER, TIMER_DURATION } from '../types/game';
 
 import { selectNumbers, generateTarget } from '../engine/letterPicker';
 import { CONUNDRUM_WORDS } from '../data/conundrums';
 import { shuffle } from '../utils/shuffle';
+import { createSeededRng } from '../utils/seededRng';
 
 export type GameAction =
   | { type: 'START_FULL_GAME'; difficulty: Difficulty; timerDuration: number }
   | { type: 'START_FREEPLAY'; roundType: RoundType; timerDuration: number; difficulty: DifficultyOrOff }
+  | { type: 'START_CHALLENGE'; seed: number; code: string; timerDuration: number; opponentName?: string; opponentResults?: ChallengeData['opponentResults']; opponentTotalScore?: number }
   | { type: 'INIT_ROUND' }
   | { type: 'PICK_LETTER'; letter: string; isConsonant: boolean }
   | { type: 'PICK_LARGE_COUNT'; count: number }
@@ -45,6 +48,7 @@ export const initialState: GameState = {
   timeRemaining: TIMER_DURATION,
   timerDuration: TIMER_DURATION,
   freeplayType: null,
+  challengeData: null,
 };
 
 function isPlayerPickingRound(roundIndex: number): boolean {
@@ -68,13 +72,13 @@ function createLettersRound(roundIndex: number, aiOff: boolean): LettersRoundSta
   };
 }
 
-function createNumbersRound(roundIndex: number, aiOff: boolean): NumbersRoundState {
+function createNumbersRound(roundIndex: number, aiOff: boolean, rng?: () => number): NumbersRoundState {
   return {
     type: 'numbers',
     numbers: [],
     largeCount: 0,
     smallCount: 0,
-    target: generateTarget(),
+    target: generateTarget(rng),
     playerAnswer: null,
     playerSteps: [],
     aiAnswer: null,
@@ -86,9 +90,10 @@ function createNumbersRound(roundIndex: number, aiOff: boolean): NumbersRoundSta
   };
 }
 
-function createConundrumRound(): ConundrumRoundState {
-  const word = CONUNDRUM_WORDS[Math.floor(Math.random() * CONUNDRUM_WORDS.length)];
-  const scrambled = shuffle(word.split('')).join('');
+function createConundrumRound(rng?: () => number): ConundrumRoundState {
+  const r = rng || Math.random;
+  const word = CONUNDRUM_WORDS[Math.floor(r() * CONUNDRUM_WORDS.length)];
+  const scrambled = shuffle(word.split(''), r).join('');
   return {
     type: 'conundrum',
     scrambled,
@@ -102,12 +107,28 @@ function createConundrumRound(): ConundrumRoundState {
   };
 }
 
-function createRoundState(roundType: RoundType, roundIndex: number, aiOff: boolean) {
+function createRoundState(roundType: RoundType, roundIndex: number, aiOff: boolean, rng?: () => number) {
   switch (roundType) {
     case 'letters': return createLettersRound(roundIndex, aiOff);
-    case 'numbers': return createNumbersRound(roundIndex, aiOff);
-    case 'conundrum': return createConundrumRound();
+    case 'numbers': return createNumbersRound(roundIndex, aiOff, rng);
+    case 'conundrum': return createConundrumRound(rng);
   }
+}
+
+/**
+ * Create a seeded RNG that's advanced to the correct position for a given round.
+ * Each round consumes some random values, so we create a fresh RNG from seed
+ * and derive a per-round sub-seed.
+ */
+function rngForRound(seed: number, roundIndex: number): () => number {
+  // Create a master RNG and derive a sub-seed for each round
+  const master = createSeededRng(seed);
+  // Skip ahead by consuming values for prior rounds
+  for (let i = 0; i <= roundIndex; i++) {
+    master(); // consume one value per round as sub-seed source
+  }
+  // Use the last consumed value as the sub-seed for this round
+  return createSeededRng(Math.floor(master() * 4294967296));
 }
 
 export function gameReducer(state: GameState, action: GameAction): GameState {
@@ -140,16 +161,43 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         currentRoundState: createRoundState(action.roundType, 0, action.difficulty === 'off'),
       };
 
+    case 'START_CHALLENGE': {
+      const rng = rngForRound(action.seed, 0);
+      const hasOpponent = !!action.opponentResults?.length;
+      return {
+        ...initialState,
+        mode: 'challenge',
+        difficulty: 'off', // No AI in challenge mode
+        screen: 'playing',
+        currentRound: 0,
+        phase: 'picking',
+        timerDuration: action.timerDuration,
+        timeRemaining: action.timerDuration,
+        currentRoundState: createRoundState(ROUND_ORDER[0], 0, true, rng),
+        challengeData: {
+          seed: action.seed,
+          code: action.code,
+          timerDuration: action.timerDuration,
+          opponentName: action.opponentName || '',
+          opponentResults: action.opponentResults || [],
+          opponentTotalScore: action.opponentTotalScore || 0,
+        },
+      };
+    }
+
     case 'INIT_ROUND': {
-      const roundType = state.mode === 'fullgame'
+      const roundType = state.mode === 'fullgame' || state.mode === 'challenge'
         ? ROUND_ORDER[state.currentRound]
         : state.freeplayType!;
+      const rng = state.challengeData
+        ? rngForRound(state.challengeData.seed, state.currentRound)
+        : undefined;
       return {
         ...state,
-        phase: 'picking',
-        timerRunning: false,
+        phase: roundType === 'conundrum' ? 'playing' : 'picking',
+        timerRunning: roundType === 'conundrum',
         timeRemaining: state.timerDuration,
-        currentRoundState: createRoundState(roundType, state.currentRound, state.difficulty === 'off'),
+        currentRoundState: createRoundState(roundType, state.currentRound, state.difficulty === 'off', rng),
       };
     }
 
@@ -178,7 +226,10 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
     case 'PICK_LARGE_COUNT': {
       if (state.currentRoundState?.type !== 'numbers') return state;
-      const numbers = selectNumbers(action.count);
+      const rng = state.challengeData
+        ? rngForRound(state.challengeData.seed, state.currentRound)
+        : undefined;
+      const numbers = selectNumbers(action.count, rng);
       return {
         ...state,
         phase: 'playing',
@@ -315,7 +366,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
     case 'NEXT_ROUND': {
       const nextRound = state.currentRound + 1;
-      const totalRounds = state.mode === 'fullgame' ? ROUND_ORDER.length : Infinity;
+      const isMultiRound = state.mode === 'fullgame' || state.mode === 'challenge';
+      const totalRounds = isMultiRound ? ROUND_ORDER.length : Infinity;
 
       if (nextRound >= totalRounds) {
         return {
@@ -325,9 +377,13 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         };
       }
 
-      const roundType = state.mode === 'fullgame'
+      const roundType = isMultiRound
         ? ROUND_ORDER[nextRound]
         : state.freeplayType!;
+
+      const rng = state.challengeData
+        ? rngForRound(state.challengeData.seed, nextRound)
+        : undefined;
 
       return {
         ...state,
@@ -335,7 +391,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         phase: roundType === 'conundrum' ? 'playing' : 'picking',
         timerRunning: roundType === 'conundrum',
         timeRemaining: state.timerDuration,
-        currentRoundState: createRoundState(roundType, nextRound, state.difficulty === 'off'),
+        currentRoundState: createRoundState(roundType, nextRound, state.difficulty === 'off', rng),
       };
     }
 

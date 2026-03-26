@@ -6,10 +6,12 @@ import { findLongestWord } from '../../engine/wordFinder';
 import { aiPickWord } from '../../engine/aiOpponent';
 import { scoreLettersRound } from '../../engine/scoring';
 import type { LettersRoundState } from '../../types/game';
+import { useChallengeOpponent } from '../../hooks/useChallengeOpponent';
 
 export function LettersReveal() {
   const { state, dispatch } = useGame();
   const round = state.currentRoundState as LettersRoundState;
+  const { hasOpponent, opponentName, result: opponentResult } = useChallengeOpponent();
   const [revealed, setRevealed] = useState(false);
 
   useEffect(() => {
@@ -63,7 +65,7 @@ export function LettersReveal() {
         </div>
       </div>
 
-      {/* AI result (only in full game) */}
+      {/* AI result */}
       {state.difficulty !== 'off' && (
         <div className="bg-[#1a2d50] rounded-xl p-4 w-full max-w-md">
           <div className="text-sm text-blue-400 mb-1">AI's word</div>
@@ -72,6 +74,19 @@ export function LettersReveal() {
               {round.aiWord || '(none)'}
             </span>
             <span className="text-2xl font-bold text-[#fbbf24]">+{round.aiScore}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Challenger result */}
+      {hasOpponent && opponentResult && (
+        <div className="bg-[#1a2d50] rounded-xl p-4 w-full max-w-md">
+          <div className="text-sm text-purple-400 mb-1">{opponentName}'s word</div>
+          <div className="flex items-center justify-between">
+            <span className="text-2xl font-bold text-white">
+              {opponentResult.answer || '(none)'}
+            </span>
+            <span className="text-2xl font-bold text-[#fbbf24]">+{opponentResult.score}</span>
           </div>
         </div>
       )}
@@ -94,7 +109,7 @@ export function LettersReveal() {
         size="lg"
         onClick={() => dispatch({ type: 'NEXT_ROUND' })}
       >
-        {state.mode === 'freeplay' ? 'Play Again' : 'Next Round'}
+        {state.mode === 'freeplay' ? 'Play Again' : state.currentRound >= 14 ? 'See Final Scores' : 'Next Round'}
       </Button>
     </div>
   );

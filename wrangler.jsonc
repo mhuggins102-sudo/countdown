@@ -10,5 +10,11 @@
   },
   "compatibility_flags": [
     "nodejs_compat"
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "CHALLENGES",
+      "id": "placeholder_kv_id"
+    }
   ]
 }
