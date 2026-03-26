@@ -39,10 +39,10 @@ export function aiPickWord(
   }
 }
 
-// Weighted random offset: lower values have linearly higher probability
-// Uses inverse-square-root sampling for a triangular distribution
+// Weighted random offset with floor: 0 = exact answer, higher offsets less likely
+// P(offset=k) decreases linearly; P(offset=0) ~ (2*max-1)/max²
 function weightedOffset(maxOffset: number): number {
-  return Math.ceil(maxOffset * (1 - Math.sqrt(Math.random())));
+  return Math.floor(maxOffset * (1 - Math.sqrt(Math.random())));
 }
 
 export function aiPickNumber(
@@ -52,26 +52,15 @@ export function aiPickNumber(
 ): number {
   const { closest } = solveNumbers(numbers, target);
 
-  let exactChance: number;
   let maxOffset: number;
-
   switch (difficulty) {
-    case 'easy':
-      exactChance = 0.05;
-      maxOffset = 50;
-      break;
-    case 'medium':
-      exactChance = 0.20;
-      maxOffset = 30;
-      break;
-    case 'hard':
-      exactChance = 0.40;
-      maxOffset = 15;
-      break;
+    case 'easy':    maxOffset = 30; break; // ~6.6% exact
+    case 'medium':  maxOffset = 20; break; // ~9.8% exact
+    case 'hard':    maxOffset = 10; break; // ~19% exact
   }
 
-  if (Math.random() < exactChance) return closest;
   const offset = weightedOffset(maxOffset);
+  if (offset === 0) return closest;
   const result = closest + (Math.random() < 0.5 ? offset : -offset);
   return Math.max(1, result);
 }
