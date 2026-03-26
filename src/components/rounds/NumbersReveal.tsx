@@ -5,7 +5,7 @@ import { SolutionSteps } from './SolutionSteps';
 import { solveNumbers } from '../../engine/numbersSolver';
 import { aiPickNumber } from '../../engine/aiOpponent';
 import { scoreNumbersRound } from '../../engine/scoring';
-import { displayOp } from '../../engine/expressionEval';
+import { displayOp, getOriginalHighlights } from '../../engine/expressionEval';
 import type { NumbersRoundState, SolutionStep } from '../../types/game';
 
 export function NumbersReveal() {
@@ -76,13 +76,7 @@ export function NumbersReveal() {
         </div>
         {/* Show player's working */}
         {round.playerSteps.length > 0 && (
-          <div className="mt-2 pt-2 border-t border-[#2a4a7f]/50 font-mono text-sm space-y-1">
-            {round.playerSteps.map((step: SolutionStep, i: number) => (
-              <div key={i} className="text-blue-200">
-                {step.a} {displayOp(step.op)} {step.b} = {step.result}
-              </div>
-            ))}
-          </div>
+          <StepsWithHighlights steps={round.playerSteps} originalNumbers={round.numbers} target={round.target} />
         )}
       </div>
 
@@ -104,19 +98,15 @@ export function NumbersReveal() {
             <span className="text-2xl font-bold text-[#fbbf24]">+{round.aiScore}</span>
           </div>
           {round.aiSteps.length > 0 && (
-            <div className="mt-2 pt-2 border-t border-[#2a4a7f]/50 font-mono text-sm space-y-1">
-              {round.aiSteps.map((step: SolutionStep, i: number) => (
-                <div key={i} className="text-blue-200">
-                  {step.a} {displayOp(step.op)} {step.b} = {step.result}
-                </div>
-              ))}
-            </div>
+            <StepsWithHighlights steps={round.aiSteps} originalNumbers={round.numbers} target={round.target} />
           )}
         </div>
       )}
 
-      {/* Optimal solution steps */}
-      <SolutionSteps steps={round.solution} target={round.target} closest={closest} originalNumbers={round.numbers} />
+      {/* Optimal solution steps — hide if player or AI already got exact */}
+      {playerDist !== 0 && aiDist !== 0 && (
+        <SolutionSteps steps={round.solution} target={round.target} closest={closest} originalNumbers={round.numbers} />
+      )}
 
       <Button
         variant="primary"
@@ -125,6 +115,32 @@ export function NumbersReveal() {
       >
         {state.mode === 'freeplay' ? 'Play Again' : 'Next Round'}
       </Button>
+    </div>
+  );
+}
+
+function StepsWithHighlights({ steps, originalNumbers, target }: { steps: SolutionStep[]; originalNumbers: number[]; target: number }) {
+  const highlights = getOriginalHighlights(steps, originalNumbers);
+  return (
+    <div className="mt-2 pt-2 border-t border-[#2a4a7f]/50 font-mono text-sm space-y-1">
+      {steps.map((step, i) => {
+        const hl = highlights[i];
+        return (
+          <div key={i} className="flex items-center gap-1.5">
+            <span className={hl.aIsOriginal ? 'bg-[#fbbf24]/20 text-[#fbbf24] px-1 rounded font-bold' : 'text-blue-200'}>
+              {step.a}
+            </span>
+            <span className="text-[#fbbf24]">{displayOp(step.op)}</span>
+            <span className={hl.bIsOriginal ? 'bg-[#fbbf24]/20 text-[#fbbf24] px-1 rounded font-bold' : 'text-blue-200'}>
+              {step.b}
+            </span>
+            <span className="text-blue-400">=</span>
+            <span className={`font-bold ${step.result === target ? 'text-green-400' : 'text-white'}`}>
+              {step.result}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }
