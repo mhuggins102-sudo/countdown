@@ -5,11 +5,16 @@ import { Button } from '../shared/Button';
 import { createPool, drawConsonant, drawVowel, aiPickLetters, type LetterPool } from '../../engine/letterPicker';
 import { useRef } from 'react';
 import type { LettersRoundState, Difficulty } from '../../types/game';
+import { useChallengeOpponent } from '../../hooks/useChallengeOpponent';
+
+const CONSONANTS = 'BCDFGHJKLMNPQRSTVWXYZ';
 
 export function LettersPicking() {
   const { state, dispatch } = useGame();
   const round = state.currentRoundState as LettersRoundState;
   const poolRef = useRef<LetterPool>(createPool());
+  const { hasOpponent, result: opponentResult } = useChallengeOpponent();
+  const isChallengeReveal = hasOpponent && !!opponentResult?.letters?.length;
 
   const canPickVowel = round.vowelCount < 5 && round.letters.length < 9;
   const canPickConsonant = round.consonantCount < 6 && round.letters.length < 9;
@@ -34,9 +39,22 @@ export function LettersPicking() {
     }
   }, [dispatch]);
 
+  // Challenge P2: auto-reveal opponent's letters one at a time
+  useEffect(() => {
+    if (isChallengeReveal && round.letters.length < 9) {
+      const nextLetter = opponentResult!.letters![round.letters.length];
+      if (!nextLetter) return;
+      const isConsonant = CONSONANTS.includes(nextLetter);
+      const timer = setTimeout(() => {
+        dispatch({ type: 'PICK_LETTER', letter: nextLetter, isConsonant });
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, [isChallengeReveal, round.letters.length, opponentResult, dispatch]);
+
   // AI auto-picks letters when it's the AI's turn
   useEffect(() => {
-    if (!round.isPlayerPicking && round.letters.length < 9) {
+    if (!isChallengeReveal && !round.isPlayerPicking && round.letters.length < 9) {
       const timer = setTimeout(() => {
         const choice = aiPickLetters(
           round.letters,
@@ -48,13 +66,17 @@ export function LettersPicking() {
       }, 600);
       return () => clearTimeout(timer);
     }
-  }, [round.isPlayerPicking, round.letters.length, round.consonantCount, round.vowelCount, state.difficulty, pickLetter]);
+  }, [isChallengeReveal, round.isPlayerPicking, round.letters.length, round.consonantCount, round.vowelCount, state.difficulty, pickLetter]);
+
+  const heading = isChallengeReveal
+    ? 'Revealing letters...'
+    : round.isPlayerPicking
+      ? 'Pick your letters'
+      : 'AI is picking letters...';
 
   return (
     <div className="flex flex-col items-center gap-6">
-      <h2 className="text-xl font-semibold text-blue-300">
-        {round.isPlayerPicking ? 'Pick your letters' : 'AI is picking letters...'}
-      </h2>
+      <h2 className="text-xl font-semibold text-blue-300">{heading}</h2>
 
       {/* Letter tiles */}
       <div className="flex gap-2 flex-wrap justify-center">

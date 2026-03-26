@@ -1,6 +1,6 @@
 interface ScoreBarProps {
   playerScore: number;
-  aiScore: number;
+  opponentScore: number;
   currentRound: number;
   totalRounds: number;
   roundType: string;
@@ -8,14 +8,14 @@ interface ScoreBarProps {
   opponentName?: string;
 }
 
-export function ScoreBar({ playerScore, aiScore, currentRound, totalRounds, roundType, isChallenge, opponentName }: ScoreBarProps) {
+export function ScoreBar({ playerScore, opponentScore, currentRound, totalRounds, roundType, isChallenge, opponentName }: ScoreBarProps) {
   const isP1 = isChallenge && !opponentName;
   const opponentLabel = isChallenge
     ? (opponentName || 'Challenger')
     : 'AI';
 
   return (
-    <div className="flex items-center justify-between bg-[#1a2d50] rounded-xl px-6 py-3 mb-6">
+    <div className="grid grid-cols-3 items-center bg-[#1a2d50] rounded-xl px-6 py-3 mb-6">
       <div className="flex flex-col items-center">
         <span className="text-xs text-blue-300 uppercase tracking-wider">You</span>
         <span className="text-3xl font-bold text-white tabular-nums">{isP1 ? '?' : playerScore}</span>
@@ -36,7 +36,7 @@ export function ScoreBar({ playerScore, aiScore, currentRound, totalRounds, roun
       ) : (
         <div className="flex flex-col items-center">
           <span className="text-xs text-blue-300 uppercase tracking-wider">{opponentLabel}</span>
-          <span className="text-3xl font-bold text-white tabular-nums">{aiScore}</span>
+          <span className="text-3xl font-bold text-white tabular-nums">{opponentScore}</span>
         </div>
       )}
     </div>

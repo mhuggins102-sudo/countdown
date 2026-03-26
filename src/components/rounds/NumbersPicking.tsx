@@ -4,11 +4,16 @@ import { NumberTile } from '../shared/NumberTile';
 import { Button } from '../shared/Button';
 import { createNumberPool, drawLargeNumber, drawSmallNumber, aiPickNumberType, type NumberPool } from '../../engine/letterPicker';
 import type { NumbersRoundState, Difficulty } from '../../types/game';
+import { useChallengeOpponent } from '../../hooks/useChallengeOpponent';
+
+const LARGE_NUMS = [25, 50, 75, 100];
 
 export function NumbersPicking() {
   const { state, dispatch } = useGame();
   const round = state.currentRoundState as NumbersRoundState;
   const poolRef = useRef<NumberPool>(createNumberPool());
+  const { hasOpponent, result: opponentResult } = useChallengeOpponent();
+  const isChallengeReveal = hasOpponent && !!opponentResult?.numbers?.length;
 
   const canPickLarge = round.largeCount < 4 && round.numbers.length < 6;
   const canPickSmall = round.numbers.length < 6;
@@ -26,9 +31,22 @@ export function NumbersPicking() {
     }
   }, [dispatch]);
 
+  // Challenge P2: auto-reveal opponent's numbers one at a time
+  useEffect(() => {
+    if (isChallengeReveal && round.numbers.length < 6) {
+      const nextNum = opponentResult!.numbers![round.numbers.length];
+      if (nextNum == null) return;
+      const isLarge = LARGE_NUMS.includes(nextNum);
+      const timer = setTimeout(() => {
+        dispatch({ type: 'PICK_NUMBER', number: nextNum, isLarge });
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, [isChallengeReveal, round.numbers.length, opponentResult, dispatch]);
+
   // AI auto-picks numbers one at a time
   useEffect(() => {
-    if (!round.isPlayerPicking && round.numbers.length < 6) {
+    if (!isChallengeReveal && !round.isPlayerPicking && round.numbers.length < 6) {
       const timer = setTimeout(() => {
         const choice = aiPickNumberType(
           round.numbers,
@@ -40,13 +58,17 @@ export function NumbersPicking() {
       }, 600);
       return () => clearTimeout(timer);
     }
-  }, [round.isPlayerPicking, round.numbers.length, round.largeCount, round.smallCount, state.difficulty, pickNumber]);
+  }, [isChallengeReveal, round.isPlayerPicking, round.numbers.length, round.largeCount, round.smallCount, state.difficulty, pickNumber]);
+
+  const heading = isChallengeReveal
+    ? 'Revealing numbers...'
+    : round.isPlayerPicking
+      ? 'Pick your numbers'
+      : 'AI is picking numbers...';
 
   return (
     <div className="flex flex-col items-center gap-6">
-      <h2 className="text-xl font-semibold text-blue-300">
-        {round.isPlayerPicking ? 'Pick your numbers' : 'AI is picking numbers...'}
-      </h2>
+      <h2 className="text-xl font-semibold text-blue-300">{heading}</h2>
 
       {/* Number tiles revealed so far — 3/3 layout */}
       <div className="flex flex-col items-center gap-2">

@@ -134,8 +134,9 @@ function rngForRound(seed: number, roundIndex: number): () => number {
 }
 
 /**
- * When P2 plays a challenge, pre-populate the round with P1's picks
- * so P2 plays the exact same letters/numbers. Skips straight to playing phase.
+ * When P2 plays a challenge, set up the round to reveal P1's picks via animation.
+ * Letters/numbers start empty with isPlayerPicking=false so picking components auto-reveal.
+ * Numbers rounds also get P1's target.
  */
 function applyOpponentPicks(
   roundState: RoundState,
@@ -143,32 +144,21 @@ function applyOpponentPicks(
 ): { round: RoundState; skipPicking: boolean } {
   if (!opponentResult) return { round: roundState, skipPicking: false };
 
-  if (roundState.type === 'letters' && opponentResult.letters?.length) {
-    const consonants = 'BCDFGHJKLMNPQRSTVWXYZ';
-    const consonantCount = opponentResult.letters.filter(l => consonants.includes(l)).length;
+  if (roundState.type === 'letters') {
     return {
-      round: {
-        ...roundState,
-        letters: opponentResult.letters,
-        consonantCount,
-        vowelCount: opponentResult.letters.length - consonantCount,
-      },
-      skipPicking: true,
+      round: { ...roundState, isPlayerPicking: false },
+      skipPicking: false,
     };
   }
 
-  if (roundState.type === 'numbers' && opponentResult.numbers?.length) {
-    const largeNums = [25, 50, 75, 100];
-    const largeCount = opponentResult.numbers.filter(n => largeNums.includes(n)).length;
+  if (roundState.type === 'numbers' && opponentResult.target != null) {
     return {
       round: {
         ...roundState,
-        numbers: opponentResult.numbers,
-        target: opponentResult.target ?? roundState.target,
-        largeCount,
-        smallCount: opponentResult.numbers.length - largeCount,
+        target: opponentResult.target,
+        isPlayerPicking: false,
       },
-      skipPicking: true,
+      skipPicking: false,
     };
   }
 
