@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import type { SolutionStep } from '../../types/game';
 import { getOriginalHighlights, displayOp } from '../../engine/expressionEval';
 
@@ -11,26 +11,13 @@ interface SolutionStepsProps {
 
 export function SolutionSteps({ steps, target, closest, originalNumbers }: SolutionStepsProps) {
   const [open, setOpen] = useState(false);
-  const [visibleSteps, setVisibleSteps] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (open && visibleSteps < steps.length) {
-      const timer = setTimeout(() => {
-        setVisibleSteps((v) => v + 1);
-      }, 800);
-      return () => clearTimeout(timer);
-    }
-  }, [open, visibleSteps, steps.length]);
 
   const toggle = useCallback(() => {
     if (open) {
-      // Closing — snap to top
       setOpen(false);
-      setVisibleSteps(0);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
-      // Opening — scroll to this section
       setOpen(true);
       setTimeout(() => {
         containerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -61,12 +48,12 @@ export function SolutionSteps({ steps, target, closest, originalNumbers }: Solut
       {open && (
         <div className="bg-[#0f1d32] border border-t-0 border-[#2a4a7f]/50 rounded-b-xl px-5 pb-5 pt-2 -mt-2">
           <div className="space-y-2 font-mono text-lg">
-            {steps.slice(0, visibleSteps).map((step, i) => {
+            {steps.map((step, i) => {
               const hl = highlights[i];
               return (
                 <div
                   key={i}
-                  className="animate-fade-in flex items-center gap-2 text-white"
+                  className="flex items-center gap-2 text-white"
                 >
                   <span
                     className={
@@ -95,8 +82,7 @@ export function SolutionSteps({ steps, target, closest, originalNumbers }: Solut
               );
             })}
           </div>
-          {visibleSteps >= steps.length && (
-            <div className="mt-3 pt-3 border-t border-[#2a4a7f]/50 animate-fade-in">
+          <div className="mt-3 pt-3 border-t border-[#2a4a7f]/50">
               {closest === target ? (
                 <span className="text-green-400 font-semibold">Exact solution found!</span>
               ) : (
@@ -105,8 +91,7 @@ export function SolutionSteps({ steps, target, closest, originalNumbers }: Solut
                   {' '}({Math.abs(closest - target)} {closest > target ? 'above' : 'below'} <span className="text-[#fbbf24]">{target}</span>)
                 </span>
               )}
-            </div>
-          )}
+          </div>
         </div>
       )}
     </div>
