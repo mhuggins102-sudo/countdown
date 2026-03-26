@@ -65,6 +65,12 @@ export interface ChallengeRoundResult {
   steps?: SolutionStep[];
   /** Conundrum: time remaining when submitted */
   timeRemaining?: number;
+  /** Letters round: the 9 letters picked */
+  letters?: string[];
+  /** Numbers round: the 6 numbers picked */
+  numbers?: number[];
+  /** Numbers round: the target number */
+  target?: number;
 }
 
 export interface ChallengeData {

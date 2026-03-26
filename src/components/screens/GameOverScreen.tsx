@@ -7,13 +7,20 @@ import type { ChallengeRoundResult, RoundState } from '../../types/game';
 function roundToResult(round: RoundState): ChallengeRoundResult {
   switch (round.type) {
     case 'letters':
-      return { roundType: 'letters', answer: round.playerWord, score: round.playerScore };
+      return {
+        roundType: 'letters',
+        answer: round.playerWord,
+        score: round.playerScore,
+        letters: round.letters,
+      };
     case 'numbers':
       return {
         roundType: 'numbers',
         answer: String(round.playerAnswer ?? ''),
         score: round.playerScore,
         steps: round.playerSteps,
+        numbers: round.numbers,
+        target: round.target,
       };
     case 'conundrum':
       return {

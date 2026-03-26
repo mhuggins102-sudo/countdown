@@ -1,12 +1,14 @@
 import type {
   GameState,
   RoundType,
+  RoundState,
   Difficulty,
   DifficultyOrOff,
   LettersRoundState,
   NumbersRoundState,
   ConundrumRoundState,
   ChallengeData,
+  ChallengeRoundResult,
 } from '../types/game';
 import { ROUND_ORDER, TIMER_DURATION } from '../types/game';
 
@@ -131,6 +133,48 @@ function rngForRound(seed: number, roundIndex: number): () => number {
   return createSeededRng(Math.floor(master() * 4294967296));
 }
 
+/**
+ * When P2 plays a challenge, pre-populate the round with P1's picks
+ * so P2 plays the exact same letters/numbers. Skips straight to playing phase.
+ */
+function applyOpponentPicks(
+  roundState: RoundState,
+  opponentResult: ChallengeRoundResult | undefined,
+): { round: RoundState; skipPicking: boolean } {
+  if (!opponentResult) return { round: roundState, skipPicking: false };
+
+  if (roundState.type === 'letters' && opponentResult.letters?.length) {
+    const consonants = 'BCDFGHJKLMNPQRSTVWXYZ';
+    const consonantCount = opponentResult.letters.filter(l => consonants.includes(l)).length;
+    return {
+      round: {
+        ...roundState,
+        letters: opponentResult.letters,
+        consonantCount,
+        vowelCount: opponentResult.letters.length - consonantCount,
+      },
+      skipPicking: true,
+    };
+  }
+
+  if (roundState.type === 'numbers' && opponentResult.numbers?.length) {
+    const largeNums = [25, 50, 75, 100];
+    const largeCount = opponentResult.numbers.filter(n => largeNums.includes(n)).length;
+    return {
+      round: {
+        ...roundState,
+        numbers: opponentResult.numbers,
+        target: opponentResult.target ?? roundState.target,
+        largeCount,
+        smallCount: opponentResult.numbers.length - largeCount,
+      },
+      skipPicking: true,
+    };
+  }
+
+  return { round: roundState, skipPicking: false };
+}
+
 export function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case 'START_FULL_GAME':
@@ -163,22 +207,32 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
     case 'START_CHALLENGE': {
       const rng = rngForRound(action.seed, 0);
+      const opponentResults = action.opponentResults || [];
+      const isP2 = opponentResults.length > 0;
+      const baseRound = createRoundState(ROUND_ORDER[0], 0, true, rng);
+      const { round: roundState, skipPicking } = isP2
+        ? applyOpponentPicks(baseRound, opponentResults[0])
+        : { round: baseRound, skipPicking: false };
+      const roundType = ROUND_ORDER[0];
+      const startPlaying = skipPicking || roundType === 'conundrum';
+
       return {
         ...initialState,
         mode: 'challenge',
         difficulty: 'off', // No AI in challenge mode
         screen: 'playing',
         currentRound: 0,
-        phase: 'picking',
+        phase: startPlaying ? 'playing' : 'picking',
+        timerRunning: startPlaying,
         timerDuration: action.timerDuration,
         timeRemaining: action.timerDuration,
-        currentRoundState: createRoundState(ROUND_ORDER[0], 0, true, rng),
+        currentRoundState: roundState,
         challengeData: {
           seed: action.seed,
           code: action.code,
           timerDuration: action.timerDuration,
           opponentName: action.opponentName || '',
-          opponentResults: action.opponentResults || [],
+          opponentResults,
           opponentTotalScore: action.opponentTotalScore || 0,
         },
       };
@@ -191,12 +245,19 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       const rng = state.challengeData
         ? rngForRound(state.challengeData.seed, state.currentRound)
         : undefined;
+      const baseRound = createRoundState(roundType, state.currentRound, state.difficulty === 'off', rng);
+      const isP2 = !!state.challengeData?.opponentResults?.length;
+      const { round: roundState, skipPicking } = isP2
+        ? applyOpponentPicks(baseRound, state.challengeData!.opponentResults[state.currentRound])
+        : { round: baseRound, skipPicking: false };
+      const startPlaying = skipPicking || roundType === 'conundrum';
+
       return {
         ...state,
-        phase: roundType === 'conundrum' ? 'playing' : 'picking',
-        timerRunning: roundType === 'conundrum',
+        phase: startPlaying ? 'playing' : 'picking',
+        timerRunning: startPlaying,
         timeRemaining: state.timerDuration,
-        currentRoundState: createRoundState(roundType, state.currentRound, state.difficulty === 'off', rng),
+        currentRoundState: roundState,
       };
     }
 
@@ -384,13 +445,20 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         ? rngForRound(state.challengeData.seed, nextRound)
         : undefined;
 
+      const baseRound = createRoundState(roundType, nextRound, state.difficulty === 'off', rng);
+      const isP2 = !!state.challengeData?.opponentResults?.length;
+      const { round: roundState, skipPicking } = isP2
+        ? applyOpponentPicks(baseRound, state.challengeData!.opponentResults[nextRound])
+        : { round: baseRound, skipPicking: false };
+      const startPlaying = skipPicking || roundType === 'conundrum';
+
       return {
         ...state,
         currentRound: nextRound,
-        phase: roundType === 'conundrum' ? 'playing' : 'picking',
-        timerRunning: roundType === 'conundrum',
+        phase: startPlaying ? 'playing' : 'picking',
+        timerRunning: startPlaying,
         timeRemaining: state.timerDuration,
-        currentRoundState: createRoundState(roundType, nextRound, state.difficulty === 'off', rng),
+        currentRoundState: roundState,
       };
     }
 

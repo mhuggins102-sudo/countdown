@@ -18,6 +18,9 @@ interface ChallengeRoundResult {
   score: number;
   steps?: { a: number; op: string; b: number; result: number }[];
   timeRemaining?: number;
+  letters?: string[];
+  numbers?: number[];
+  target?: number;
 }
 
 interface ChallengeRecord {
