@@ -56,9 +56,9 @@ export function BtcScreen() {
 
       {/* Playing area */}
       <div className="mt-2">
-        {roundType === 'letters' && <BtcLettersPlaying key={state.btcRoundsCompleted} />}
-        {roundType === 'numbers' && <BtcNumbersPlaying key={state.btcRoundsCompleted} />}
-        {roundType === 'conundrum' && <BtcConundrumPlaying key={state.btcRoundsCompleted} />}
+        {roundType === 'letters' && <BtcLettersPlaying key={state.btcRoundKey} />}
+        {roundType === 'numbers' && <BtcNumbersPlaying key={state.btcRoundKey} />}
+        {roundType === 'conundrum' && <BtcConundrumPlaying key={state.btcRoundKey} />}
       </div>
     </div>
   );

@@ -8,10 +8,10 @@ import { selectNumbers, generateTarget } from './letterPicker';
 
 /**
  * Generate 9 letters with a random vowel/consonant distribution.
- * Valid distributions: 3V/6C, 4V/5C, 5V/4C, 6V/3C — equally likely.
+ * Valid distributions: 3V/6C, 4V/5C, 5V/4C — equally likely.
  */
 export function generateBtcLetters(): string[] {
-  const vowelCounts = [3, 4, 5, 6];
+  const vowelCounts = [3, 4, 5];
   const vowelCount = vowelCounts[Math.floor(Math.random() * vowelCounts.length)];
   const consonantCount = 9 - vowelCount;
 

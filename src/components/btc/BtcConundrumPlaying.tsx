@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useGame } from '../../hooks/useGame';
 import { LetterTile } from '../shared/LetterTile';
 import { Button } from '../shared/Button';
@@ -10,9 +10,26 @@ export function BtcConundrumPlaying() {
   const { state, dispatch } = useGame();
   const round = state.currentRoundState as ConundrumRoundState;
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
+  const [hintsRevealed, setHintsRevealed] = useState(0);
+  const hintTimerRef = useRef<number | null>(null);
 
   const scrambledLetters = round.scrambled.split('');
+  const answerLetters = round.answer.split('');
   const currentWord = selectedIndices.map((i) => scrambledLetters[i]).join('');
+
+  // Progressive hint: reveal one letter every 5 seconds
+  useEffect(() => {
+    let elapsed = 0;
+    hintTimerRef.current = window.setInterval(() => {
+      elapsed += 1;
+      if (elapsed % 5 === 0) {
+        setHintsRevealed((h) => Math.min(h + 1, 9));
+      }
+    }, 1000);
+    return () => {
+      if (hintTimerRef.current) clearInterval(hintTimerRef.current);
+    };
+  }, []);
 
   // Auto-submit when all 9 tiles form a valid answer
   useEffect(() => {
@@ -52,7 +69,24 @@ export function BtcConundrumPlaying() {
         ))}
       </div>
 
-      <p className="text-blue-300 text-sm">Unscramble the 9-letter word!</p>
+      {/* Hint display */}
+      {hintsRevealed > 0 && (
+        <div className="flex gap-1 items-center">
+          <span className="text-xs text-purple-400 mr-2">Hint:</span>
+          {answerLetters.map((letter, i) => (
+            <span
+              key={i}
+              className={`w-8 h-8 rounded font-bold text-lg flex items-center justify-center ${
+                i < hintsRevealed
+                  ? 'bg-purple-500/30 text-purple-300 border border-purple-500/50'
+                  : 'bg-[#1a2d50] text-transparent border border-[#2a4a7f]/30'
+              }`}
+            >
+              {i < hintsRevealed ? letter : '?'}
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* Current word display */}
       <div className="min-h-14 flex items-center gap-1">

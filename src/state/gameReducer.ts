@@ -58,6 +58,7 @@ export const initialState: GameState = {
   challengeData: null,
   btcMode: null,
   btcRoundsCompleted: 0,
+  btcRoundKey: 0,
   btcLastBonus: 0,
 };
 
@@ -522,6 +523,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         timeRemaining: 60,
         btcMode: action.btcMode,
         btcRoundsCompleted: 0,
+        btcRoundKey: 0,
         btcLastBonus: 0,
         currentRoundState: createBtcRound(roundType),
       };
@@ -531,13 +533,14 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       if (state.mode !== 'btc' || !state.btcMode) return state;
       const newTime = state.timeRemaining + action.bonus;
       if (newTime <= 0) {
-        return { ...state, timeRemaining: 0, timerRunning: false, screen: 'gameover', btcRoundsCompleted: state.btcRoundsCompleted + 1 };
+        return { ...state, timeRemaining: 0, timerRunning: false, screen: 'gameover', btcRoundsCompleted: state.btcRoundsCompleted + 1, btcRoundKey: state.btcRoundKey + 1 };
       }
       const nextType = pickBtcRoundType(state.btcMode);
       return {
         ...state,
         timeRemaining: newTime,
         btcRoundsCompleted: state.btcRoundsCompleted + 1,
+        btcRoundKey: state.btcRoundKey + 1,
         btcLastBonus: action.bonus,
         currentRoundState: createBtcRound(nextType),
       };
@@ -554,6 +557,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return {
         ...state,
         timeRemaining: newTime,
+        btcRoundKey: state.btcRoundKey + 1,
         btcLastBonus: skipPenalty,
         currentRoundState: createBtcRound(nextType),
       };

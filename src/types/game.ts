@@ -103,6 +103,7 @@ export interface GameState {
   /** Beat the Clock mode */
   btcMode: BtcMode | null;
   btcRoundsCompleted: number;
+  btcRoundKey: number;
   btcLastBonus: number;
 }
 
