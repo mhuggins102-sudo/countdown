@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useGame } from '../../hooks/useGame';
 import { Button } from '../shared/Button';
 import { createChallenge, completeChallenge } from '../../api/challengeApi';
-import { saveCompletedChallenge } from '../../utils/challengeHistory';
+import { saveCompletedChallenge, savePendingChallenge } from '../../utils/challengeHistory';
 import type { ChallengeRoundResult, RoundState } from '../../types/game';
 
 function roundToResult(round: RoundState): ChallengeRoundResult {
@@ -71,6 +71,11 @@ export function GameOverScreen({ onPlayAgain }: { onPlayAgain: () => void }) {
         results,
         totalScore: state.playerTotalScore,
       }).then(() => {
+        savePendingChallenge({
+          code: state.challengeData!.code,
+          createdAt: Date.now(),
+          playerScore: state.playerTotalScore,
+        });
         setUploaded(true);
         setUploading(false);
       }).catch(() => setUploading(false));

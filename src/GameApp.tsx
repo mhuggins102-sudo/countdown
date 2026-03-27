@@ -116,9 +116,9 @@ export function GameApp() {
         </div>
 
         <button
-          onClick={() => setTimerDuration((d) => d === 60 ? 30 : 60)}
+          onClick={() => setTimerDuration((d) => d === 60 ? 45 : d === 45 ? 30 : 60)}
           className="w-24 h-24 rounded-full border-4 border-[#3b82f6] flex items-center justify-center cursor-pointer hover:border-[#fbbf24] transition-colors active:scale-95 group"
-          title="Tap to toggle 30/60 seconds"
+          title="Tap to toggle timer"
         >
           <div className="w-16 h-16 rounded-full border-2 border-[#2a4a7f] group-hover:border-[#fbbf24]/50 flex items-center justify-center transition-colors">
             <span className="text-3xl font-bold text-[#fbbf24]">{timerDuration}</span>

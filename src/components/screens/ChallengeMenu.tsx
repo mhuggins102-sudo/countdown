@@ -3,7 +3,13 @@ import { useGame } from '../../hooks/useGame';
 import { Button } from '../shared/Button';
 import { fetchChallenge } from '../../api/challengeApi';
 import { generateSeed, seedToCode } from '../../utils/seededRng';
-import { getCompletedChallenges, saveCompletedChallenge, type CompletedChallenge } from '../../utils/challengeHistory';
+import {
+  getCompletedChallenges,
+  saveCompletedChallenge,
+  getPendingChallenges,
+  type CompletedChallenge,
+  type PendingChallenge,
+} from '../../utils/challengeHistory';
 import { ChallengeResultScreen } from './ChallengeResultScreen';
 
 type View = 'menu' | 'history' | 'result';
@@ -97,7 +103,7 @@ export function ChallengeMenu({ onBack, timerDuration }: { onBack: () => void; t
     );
   }
 
-  // Completed challenges history
+  // My Challenges history
   if (view === 'history') {
     return <ChallengeHistory onBack={() => setView('menu')} />;
   }
@@ -153,13 +159,13 @@ export function ChallengeMenu({ onBack, timerDuration }: { onBack: () => void; t
         </div>
       </div>
 
-      {/* Completed challenges */}
+      {/* My Challenges */}
       <div className="w-full max-w-sm">
         <button
           onClick={() => setView('history')}
           className="w-full bg-[#1a2d50] hover:bg-[#2a4a7f] border border-[#2a4a7f] hover:border-[#3b82f6] rounded-xl p-4 text-center transition-all"
         >
-          <span className="text-blue-300 font-semibold">Completed Challenges</span>
+          <span className="text-blue-300 font-semibold">My Challenges</span>
         </button>
       </div>
 
@@ -171,24 +177,25 @@ export function ChallengeMenu({ onBack, timerDuration }: { onBack: () => void; t
 }
 
 function ChallengeHistory({ onBack }: { onBack: () => void }) {
-  const challenges = getCompletedChallenges();
+  const completed = getCompletedChallenges();
+  const pending = getPendingChallenges();
 
-  const wins = challenges.filter((c) =>
+  const wins = completed.filter((c) =>
     (c.asPlayer === 1 && c.p1Score > c.p2Score) ||
     (c.asPlayer === 2 && c.p2Score > c.p1Score)
   ).length;
-  const losses = challenges.filter((c) =>
+  const losses = completed.filter((c) =>
     (c.asPlayer === 1 && c.p1Score < c.p2Score) ||
     (c.asPlayer === 2 && c.p2Score < c.p1Score)
   ).length;
-  const draws = challenges.filter((c) => c.p1Score === c.p2Score).length;
+  const draws = completed.filter((c) => c.p1Score === c.p2Score).length;
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen gap-6 px-4">
-      <h1 className="text-3xl font-bold text-white">Completed Challenges</h1>
+      <h1 className="text-3xl font-bold text-white">My Challenges</h1>
 
       {/* Overall record */}
-      {challenges.length > 0 && (
+      {completed.length > 0 && (
         <div className="flex gap-6 text-center">
           <div>
             <div className="text-2xl font-bold text-green-400">{wins}</div>
@@ -207,10 +214,13 @@ function ChallengeHistory({ onBack }: { onBack: () => void }) {
 
       {/* Challenge list */}
       <div className="w-full max-w-sm space-y-2">
-        {challenges.length === 0 ? (
-          <p className="text-blue-400 text-center text-sm">No completed challenges yet</p>
+        {pending.length === 0 && completed.length === 0 ? (
+          <p className="text-blue-400 text-center text-sm">No challenges yet</p>
         ) : (
-          challenges.map((c) => <ChallengeRow key={`${c.code}-${c.asPlayer}`} challenge={c} />)
+          <>
+            {pending.map((c) => <PendingRow key={c.code} challenge={c} />)}
+            {completed.map((c) => <CompletedRow key={`${c.code}-${c.asPlayer}`} challenge={c} />)}
+          </>
         )}
       </div>
 
@@ -221,7 +231,24 @@ function ChallengeHistory({ onBack }: { onBack: () => void }) {
   );
 }
 
-function ChallengeRow({ challenge }: { challenge: CompletedChallenge }) {
+function PendingRow({ challenge }: { challenge: PendingChallenge }) {
+  const daysAgo = Math.floor((Date.now() - challenge.createdAt) / (1000 * 60 * 60 * 24));
+  const timeLabel = daysAgo === 0 ? 'Today' : daysAgo === 1 ? '1 day ago' : `${daysAgo}d ago`;
+
+  return (
+    <div className="bg-[#1a2d50] border border-[#2a4a7f] rounded-lg px-4 py-3 flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <span className="text-xs font-bold px-2 py-0.5 rounded bg-blue-500/20 text-blue-400">
+          Pending
+        </span>
+        <span className="text-sm font-mono text-blue-300 tracking-wider">{challenge.code}</span>
+      </div>
+      <div className="text-xs text-blue-400">{timeLabel}</div>
+    </div>
+  );
+}
+
+function CompletedRow({ challenge }: { challenge: CompletedChallenge }) {
   const yourScore = challenge.asPlayer === 1 ? challenge.p1Score : challenge.p2Score;
   const theirScore = challenge.asPlayer === 1 ? challenge.p2Score : challenge.p1Score;
   const won = yourScore > theirScore;
