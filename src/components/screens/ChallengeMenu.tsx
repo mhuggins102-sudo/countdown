@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useGame } from '../../hooks/useGame';
 import { Button } from '../shared/Button';
 import { fetchChallenge } from '../../api/challengeApi';
@@ -177,8 +177,42 @@ export function ChallengeMenu({ onBack, timerDuration }: { onBack: () => void; t
 }
 
 function ChallengeHistory({ onBack }: { onBack: () => void }) {
-  const completed = getCompletedChallenges();
-  const pending = getPendingChallenges();
+  const [completed, setCompleted] = useState(getCompletedChallenges);
+  const [pending, setPending] = useState(getPendingChallenges);
+  const [checking, setChecking] = useState(false);
+
+  // On mount, check each pending challenge against the server
+  useEffect(() => {
+    const pendingList = getPendingChallenges();
+    if (pendingList.length === 0) return;
+    setChecking(true);
+
+    Promise.all(
+      pendingList.map((p) =>
+        fetchChallenge(p.code)
+          .then((record) => {
+            if (record?.p2Results) {
+              // Challenge completed — move to completed history
+              saveCompletedChallenge({
+                code: record.code,
+                completedAt: Date.now(),
+                asPlayer: 1,
+                p1Name: record.p1Name || 'Player 1',
+                p1Score: record.p1TotalScore,
+                p2Name: record.p2Name || 'Player 2',
+                p2Score: record.p2TotalScore ?? 0,
+              });
+            }
+          })
+          .catch(() => {/* ignore fetch errors */})
+      )
+    ).then(() => {
+      // Refresh state from localStorage after all checks
+      setCompleted(getCompletedChallenges());
+      setPending(getPendingChallenges());
+      setChecking(false);
+    });
+  }, []);
 
   const wins = completed.filter((c) =>
     (c.asPlayer === 1 && c.p1Score > c.p2Score) ||
@@ -210,6 +244,10 @@ function ChallengeHistory({ onBack }: { onBack: () => void }) {
             <div className="text-xs text-blue-300 uppercase">Draws</div>
           </div>
         </div>
+      )}
+
+      {checking && (
+        <p className="text-blue-400 text-sm animate-pulse">Checking for updates...</p>
       )}
 
       {/* Challenge list */}
