@@ -2,7 +2,8 @@ export type RoundType = 'letters' | 'numbers' | 'conundrum';
 export type RoundPhase = 'picking' | 'playing' | 'reveal';
 export type Difficulty = 'easy' | 'medium' | 'hard';
 export type DifficultyOrOff = Difficulty | 'off';
-export type GameMode = 'freeplay' | 'fullgame' | 'challenge';
+export type GameMode = 'freeplay' | 'fullgame' | 'challenge' | 'btc';
+export type BtcMode = 'letters' | 'numbers' | 'all';
 export type Screen = 'menu' | 'difficulty' | 'freeplay' | 'playing' | 'gameover';
 
 export interface SolutionStep {
@@ -99,6 +100,10 @@ export interface GameState {
   freeplayType: RoundType | null;
   /** Challenge mode data */
   challengeData: ChallengeData | null;
+  /** Beat the Clock mode */
+  btcMode: BtcMode | null;
+  btcRoundsCompleted: number;
+  btcLastBonus: number;
 }
 
 export const ROUND_ORDER: RoundType[] = [

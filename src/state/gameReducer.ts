@@ -4,6 +4,7 @@ import type {
   RoundState,
   Difficulty,
   DifficultyOrOff,
+  BtcMode,
   LettersRoundState,
   NumbersRoundState,
   ConundrumRoundState,
@@ -13,6 +14,7 @@ import type {
 import { ROUND_ORDER, TIMER_DURATION } from '../types/game';
 
 import { selectNumbers, generateTarget } from '../engine/letterPicker';
+import { generateBtcLetters, generateBtcNumbers } from '../engine/btcGenerator';
 import { CONUNDRUM_WORDS } from '../data/conundrums';
 import { shuffle } from '../utils/shuffle';
 import { createSeededRng } from '../utils/seededRng';
@@ -34,7 +36,9 @@ export type GameAction =
   | { type: 'TIMER_EXPIRED' }
   | { type: 'SET_ROUND_RESULTS'; playerScore: number; aiScore: number; extras?: Record<string, unknown> }
   | { type: 'NEXT_ROUND' }
-  | { type: 'RETURN_TO_MENU' };
+  | { type: 'RETURN_TO_MENU' }
+  | { type: 'START_BTC'; btcMode: BtcMode }
+  | { type: 'BTC_SUBMIT'; bonus: number };
 
 export const initialState: GameState = {
   mode: 'freeplay',
@@ -51,6 +55,9 @@ export const initialState: GameState = {
   timerDuration: TIMER_DURATION,
   freeplayType: null,
   challengeData: null,
+  btcMode: null,
+  btcRoundsCompleted: 0,
+  btcLastBonus: 0,
 };
 
 function isPlayerPickingRound(roundIndex: number): boolean {
@@ -163,6 +170,56 @@ function applyOpponentPicks(
   }
 
   return { round: roundState, skipPicking: false };
+}
+
+/** Pick a random round type for BTC based on mode and game probabilities */
+function pickBtcRoundType(btcMode: BtcMode): RoundType {
+  if (btcMode === 'letters') return 'letters';
+  if (btcMode === 'numbers') return 'numbers';
+  // 'all' mode: 10/15 letters, 4/15 numbers, 1/15 conundrum
+  const r = Math.random() * 15;
+  if (r < 10) return 'letters';
+  if (r < 14) return 'numbers';
+  return 'conundrum';
+}
+
+/** Create a fully populated round for BTC (no picking phase) */
+function createBtcRound(roundType: RoundType): RoundState {
+  if (roundType === 'letters') {
+    const letters = generateBtcLetters();
+    return {
+      type: 'letters',
+      letters,
+      consonantCount: letters.filter((l) => !'AEIOU'.includes(l)).length,
+      vowelCount: letters.filter((l) => 'AEIOU'.includes(l)).length,
+      playerWord: '',
+      aiWord: '',
+      bestWord: '',
+      playerScore: 0,
+      aiScore: 0,
+      isPlayerPicking: false,
+    };
+  }
+  if (roundType === 'numbers') {
+    const { numbers, target, largeCount } = generateBtcNumbers();
+    return {
+      type: 'numbers',
+      numbers,
+      largeCount,
+      smallCount: 6 - largeCount,
+      target,
+      playerAnswer: null,
+      playerSteps: [],
+      aiAnswer: null,
+      aiSteps: [],
+      solution: [],
+      playerScore: 0,
+      aiScore: 0,
+      isPlayerPicking: false,
+    };
+  }
+  // conundrum
+  return createConundrumRound();
 }
 
 export function gameReducer(state: GameState, action: GameAction): GameState {
@@ -327,15 +384,14 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
     case 'TICK':
       if (!state.timerRunning) return state;
-      const newTime = state.timeRemaining - 1;
-      if (newTime <= 0) {
-        return {
-          ...state,
-          timeRemaining: 0,
-          timerRunning: false,
-        };
+      const newTickTime = state.timeRemaining - 1;
+      if (newTickTime <= 0) {
+        if (state.mode === 'btc') {
+          return { ...state, timeRemaining: 0, timerRunning: false, screen: 'gameover' };
+        }
+        return { ...state, timeRemaining: 0, timerRunning: false };
       }
-      return { ...state, timeRemaining: newTime };
+      return { ...state, timeRemaining: newTickTime };
 
     case 'SUBMIT_LETTERS_WORD': {
       if (state.currentRoundState?.type !== 'letters') return state;
@@ -449,6 +505,37 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         timerRunning: startPlaying,
         timeRemaining: state.timerDuration,
         currentRoundState: roundState,
+      };
+    }
+
+    case 'START_BTC': {
+      const roundType = pickBtcRoundType(action.btcMode);
+      return {
+        ...initialState,
+        mode: 'btc',
+        difficulty: 'off',
+        screen: 'playing',
+        phase: 'playing',
+        timerRunning: true,
+        timerDuration: 60,
+        timeRemaining: 60,
+        btcMode: action.btcMode,
+        btcRoundsCompleted: 0,
+        btcLastBonus: 0,
+        currentRoundState: createBtcRound(roundType),
+      };
+    }
+
+    case 'BTC_SUBMIT': {
+      if (state.mode !== 'btc' || !state.btcMode) return state;
+      const newTime = state.timeRemaining + action.bonus;
+      const nextType = pickBtcRoundType(state.btcMode);
+      return {
+        ...state,
+        timeRemaining: newTime,
+        btcRoundsCompleted: state.btcRoundsCompleted + 1,
+        btcLastBonus: action.bonus,
+        currentRoundState: createBtcRound(nextType),
       };
     }
 

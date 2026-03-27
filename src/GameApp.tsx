@@ -9,6 +9,9 @@ import { FreePlayMenu } from './components/screens/FreePlayMenu';
 import { ChallengeMenu } from './components/screens/ChallengeMenu';
 import { GameOverScreen } from './components/screens/GameOverScreen';
 import { ChallengeResultScreen } from './components/screens/ChallengeResultScreen';
+import { BtcMenu } from './components/btc/BtcMenu';
+import { BtcScreen } from './components/btc/BtcScreen';
+import { BtcGameOverScreen } from './components/btc/BtcGameOverScreen';
 
 // Round components
 import { LettersPicking } from './components/rounds/LettersPicking';
@@ -23,7 +26,7 @@ import { ConundrumReveal } from './components/rounds/ConundrumReveal';
 // Shared
 import { ScoreBar } from './components/shared/ScoreBar';
 
-type MenuScreen = 'main' | 'difficulty' | 'freeplay' | 'challenge';
+type MenuScreen = 'main' | 'difficulty' | 'freeplay' | 'challenge' | 'btc';
 
 interface CompletedResultView {
   code: string;
@@ -103,6 +106,9 @@ export function GameApp() {
     if (menuScreen === 'challenge') {
       return <ChallengeMenu onBack={goToMainMenu} timerDuration={timerDuration} />;
     }
+    if (menuScreen === 'btc') {
+      return <BtcMenu onBack={goToMainMenu} />;
+    }
 
     // Main menu with custom handlers
     return (
@@ -140,6 +146,12 @@ export function GameApp() {
             Challenge a Friend
           </button>
           <button
+            onClick={() => setMenuScreen('btc')}
+            className="bg-gradient-to-r from-[#ef4444] to-[#dc2626] hover:from-[#f87171] hover:to-[#ef4444] text-white shadow-lg shadow-red-500/25 font-semibold rounded-lg transition-all duration-200 active:scale-95 px-8 py-4 text-xl"
+          >
+            Beat the Clock
+          </button>
+          <button
             onClick={() => setMenuScreen('freeplay')}
             className="bg-[#3b82f6] hover:bg-[#2563eb] text-white shadow-lg shadow-blue-500/25 font-semibold rounded-lg transition-all duration-200 active:scale-95 px-8 py-4 text-xl"
           >
@@ -155,7 +167,15 @@ export function GameApp() {
   }
 
   if (state.screen === 'gameover') {
+    if (state.mode === 'btc') {
+      return <BtcGameOverScreen onPlayAgain={goToMainMenu} />;
+    }
     return <GameOverScreen onPlayAgain={goToMainMenu} />;
+  }
+
+  // BTC playing screen (has its own layout)
+  if (state.mode === 'btc') {
+    return <BtcScreen />;
   }
 
   // Playing screen
