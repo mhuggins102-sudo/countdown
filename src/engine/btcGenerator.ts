@@ -51,23 +51,23 @@ export function generateBtcNumbers(): { numbers: number[]; target: number; large
 
 /** Time bonus for a letters word of given length */
 export function lettersBtcBonus(wordLength: number): number {
-  if (wordLength <= 4) return 0;
-  if (wordLength === 5) return 10;
-  if (wordLength === 6) return 15;
+  if (wordLength <= 4) return -5;
+  if (wordLength === 5) return 5;
+  if (wordLength === 6) return 10;
   if (wordLength === 7) return 20;
-  if (wordLength === 8) return 25;
-  // 9 letters: 30 + 10 perfection bonus
+  if (wordLength === 8) return 30;
+  // 9 letters
   return 40;
 }
 
 /** Time bonus for a numbers answer at given distance from target */
 export function numbersBtcBonus(distance: number): number {
-  if (distance === 0) return 45;
-  if (distance <= 1) return 30;
-  if (distance <= 2) return 25;
-  if (distance <= 3) return 20;
-  if (distance <= 5) return 15;
-  if (distance <= 10) return 10;
+  if (distance === 0) return 30;
+  if (distance <= 1) return 25;
+  if (distance <= 2) return 20;
+  if (distance <= 3) return 15;
+  if (distance <= 5) return 10;
+  if (distance <= 8) return 5;
   return 0;
 }
 
