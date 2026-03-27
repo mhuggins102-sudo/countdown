@@ -14,7 +14,6 @@ export function ConundrumPlaying() {
   const round = state.currentRoundState as ConundrumRoundState;
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [submitted, setSubmitted] = useState(false);
-  const [playerWrong, setPlayerWrong] = useState(false);
   const [aiBuzzed, setAiBuzzed] = useState(false);
   const aiStored = useRef(false);
   const { hasOpponent, opponentName, result: opponentResult } = useChallengeOpponent();
@@ -45,21 +44,16 @@ export function ConundrumPlaying() {
   }, [state.difficulty, state.timerDuration, hasOpponent, opponentCorrect, opponentBuzzTime, dispatch]);
 
   // Watch for AI/opponent buzz-in: when elapsed time passes their guess time
-  // Allow AI to buzz in even after player submitted wrong (playerWrong === true)
   useEffect(() => {
-    if (aiBuzzed) return;
-    // If player submitted correctly, no need for AI buzz-in
-    if (submitted && !playerWrong) return;
+    if (aiBuzzed || submitted) return;
 
     // AI buzz-in
     if (!hasOpponent && round.aiSolved && round.aiGuessTime > 0) {
       const elapsed = state.timerDuration - state.timeRemaining;
       if (elapsed >= round.aiGuessTime) {
         setAiBuzzed(true);
-        if (!submitted) {
-          setSubmitted(true);
-          dispatch({ type: 'SUBMIT_CONUNDRUM_GUESS', guess: '', timeRemaining: state.timeRemaining });
-        }
+        setSubmitted(true);
+        dispatch({ type: 'SUBMIT_CONUNDRUM_GUESS', guess: '', timeRemaining: state.timeRemaining });
       }
     }
 
@@ -68,18 +62,14 @@ export function ConundrumPlaying() {
       const elapsed = state.timerDuration - state.timeRemaining;
       if (elapsed >= opponentBuzzTime) {
         setAiBuzzed(true);
-        if (!submitted) {
-          setSubmitted(true);
-          dispatch({ type: 'SUBMIT_CONUNDRUM_GUESS', guess: '', timeRemaining: state.timeRemaining });
-        }
+        setSubmitted(true);
+        dispatch({ type: 'SUBMIT_CONUNDRUM_GUESS', guess: '', timeRemaining: state.timeRemaining });
       }
     }
-  }, [state.timeRemaining, state.timerDuration, round.aiGuessTime, round.aiSolved, aiBuzzed, submitted, playerWrong, hasOpponent, opponentCorrect, opponentBuzzTime, dispatch]);
+  }, [state.timeRemaining, state.timerDuration, round.aiGuessTime, round.aiSolved, aiBuzzed, submitted, hasOpponent, opponentCorrect, opponentBuzzTime, dispatch]);
 
   // Transition to reveal after submission or buzz-in
   useEffect(() => {
-    // If player was wrong but AI hasn't buzzed yet, keep timer running (don't transition)
-    if (playerWrong && !aiBuzzed) return;
     if (submitted && state.phase === 'playing') {
       const delay = aiBuzzed ? 2500 : 1500;
       const timer = setTimeout(() => {
@@ -87,21 +77,14 @@ export function ConundrumPlaying() {
       }, delay);
       return () => clearTimeout(timer);
     }
-  }, [submitted, playerWrong, aiBuzzed, state.phase, dispatch]);
+  }, [submitted, aiBuzzed, state.phase, dispatch]);
 
-  const aiMightBuzzIn = (!hasOpponent && state.difficulty !== 'off') || (hasOpponent && opponentCorrect);
   const doSubmit = useCallback((guess: string) => {
     if (!submitted) {
-      const correct = isConundrumCorrect(guess, round.answer);
       setSubmitted(true);
-      // If wrong and AI/opponent might still buzz in, keep timer running
-      const keepTimer = !correct && aiMightBuzzIn;
-      if (!correct) {
-        setPlayerWrong(true);
-      }
-      dispatch({ type: 'SUBMIT_CONUNDRUM_GUESS', guess, timeRemaining: state.timeRemaining, keepTimer });
+      dispatch({ type: 'SUBMIT_CONUNDRUM_GUESS', guess, timeRemaining: state.timeRemaining });
     }
-  }, [submitted, round.answer, aiMightBuzzIn, dispatch, state.timeRemaining]);
+  }, [submitted, dispatch, state.timeRemaining]);
 
   // Auto-submit when all 9 tiles selected and word is a valid anagram
   useEffect(() => {
@@ -113,12 +96,10 @@ export function ConundrumPlaying() {
     }
   }, [selectedIndices, scrambledLetters, round.answer, submitted, doSubmit]);
 
+  // Timer expires: submit empty (no correct answer found)
   useTimer(() => {
     if (!submitted) {
-      doSubmit(currentWord);
-    } else if (playerWrong) {
-      // Player submitted wrong and timer ran out with no AI buzz — go to reveal
-      dispatch({ type: 'TIMER_EXPIRED' });
+      doSubmit('');
     }
   });
 
@@ -175,12 +156,12 @@ export function ConundrumPlaying() {
         ))}
       </div>
 
-      {!aiBuzzed && (
+      {!aiBuzzed && !submitted && (
         <p className="text-blue-300 text-sm">Tap tiles to unscramble the 9-letter word!</p>
       )}
 
       {/* Current word display */}
-      {!aiBuzzed && (
+      {!aiBuzzed && !submitted && (
         <div className="min-h-16 flex items-center gap-1">
           {currentWord.length > 0 ? (
             <div className="flex gap-1">
@@ -199,7 +180,7 @@ export function ConundrumPlaying() {
         </div>
       )}
 
-      {/* Action buttons */}
+      {/* Action buttons — Clear & Undo only, no Submit */}
       {!submitted && (
         <div className="flex gap-3">
           <Button variant="secondary" size="sm" onClick={handleClear} disabled={selectedIndices.length === 0}>
@@ -208,21 +189,13 @@ export function ConundrumPlaying() {
           <Button variant="secondary" size="sm" onClick={handleUndo} disabled={selectedIndices.length === 0}>
             Undo
           </Button>
-          <Button variant="gold" size="lg" onClick={() => doSubmit(currentWord)} disabled={currentWord.length === 0}>
-            Submit
-          </Button>
         </div>
       )}
 
       {submitted && !aiBuzzed && (
-        <div className="text-center animate-fade-in">
-          <p className="text-blue-300">
-            Your answer: <span className="font-bold text-white">{round.playerGuess || '(no answer)'}</span>
-          </p>
-          {playerWrong && (
-            <p className="text-red-400 text-sm mt-1">Incorrect — time continues...</p>
-          )}
-        </div>
+        <p className="text-green-400 text-lg font-bold animate-fade-in">
+          {round.playerGuess ? round.playerGuess.toUpperCase() : 'Time\'s up!'}
+        </p>
       )}
     </div>
   );
