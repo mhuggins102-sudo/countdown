@@ -3,10 +3,9 @@ import { useEffect, useRef, useState } from 'react';
 interface BtcTimerProps {
   timeRemaining: number;
   isRunning: boolean;
-  lastBonus: number;
 }
 
-export function BtcTimer({ timeRemaining, isRunning, lastBonus }: BtcTimerProps) {
+export function BtcTimer({ timeRemaining, isRunning }: BtcTimerProps) {
   const radius = 54;
   const circumference = 2 * Math.PI * radius;
 

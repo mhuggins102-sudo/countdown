@@ -44,7 +44,6 @@ export function BtcScreen() {
         <BtcTimer
           timeRemaining={state.timeRemaining}
           isRunning={state.timerRunning}
-          lastBonus={state.btcLastBonus}
         />
       </div>
 
