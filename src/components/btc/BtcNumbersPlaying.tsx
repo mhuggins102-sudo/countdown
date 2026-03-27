@@ -130,14 +130,6 @@ export function BtcNumbersPlaying() {
         )}
       </div>
 
-      {/* Current answer display */}
-      {currentAnswer !== null && (
-        <div className={`text-center text-sm ${canSubmit ? 'text-green-400' : 'text-blue-300'}`}>
-          Current: <span className="font-bold text-white text-lg">{currentAnswer}</span>
-          {' '}({distance === 0 ? 'exact!' : `${distance} away`})
-        </div>
-      )}
-
       {/* Operators */}
       <div className="flex gap-2 items-center">
         {ops.map((op) => (
