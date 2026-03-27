@@ -123,11 +123,16 @@ export default {
         playerName: string;
         results: ChallengeRoundResult[];
         totalScore: number;
+        p1HeadToHeadScore?: number;
       };
 
       record.p2Name = body.playerName || 'Player 2';
       record.p2Results = body.results;
       record.p2TotalScore = body.totalScore;
+      // P2 knows the correct head-to-head score for P1
+      if (body.p1HeadToHeadScore != null) {
+        record.p1TotalScore = body.p1HeadToHeadScore;
+      }
 
       await env.CHALLENGES.put(
         `challenge:${code}`,

@@ -41,6 +41,7 @@ export async function completeChallenge(code: string, data: {
   playerName: string;
   results: ChallengeRoundResult[];
   totalScore: number;
+  p1HeadToHeadScore?: number;
 }): Promise<{ ok: boolean }> {
   const res = await fetch(`${API_BASE}/${code.toUpperCase()}`, {
     method: 'PUT',

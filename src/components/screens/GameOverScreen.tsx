@@ -85,6 +85,7 @@ export function GameOverScreen({ onPlayAgain }: { onPlayAgain: () => void }) {
         playerName: 'Player 2',
         results,
         totalScore: state.playerTotalScore,
+        p1HeadToHeadScore: opponentScore,
       }).then(() => {
         // Save to local history
         saveCompletedChallenge({
