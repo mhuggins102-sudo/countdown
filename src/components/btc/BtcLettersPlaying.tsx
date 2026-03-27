@@ -97,6 +97,12 @@ export function BtcLettersPlaying() {
           Submit
         </Button>
       </div>
+      <button
+        onClick={() => dispatch({ type: 'BTC_SKIP' })}
+        className="text-sm text-blue-400/60 hover:text-blue-300 transition-colors"
+      >
+        Skip (-10s)
+      </button>
 
       {currentWord.length >= 4 && !wordValid && (
         <p className="text-red-400/70 text-sm">Not a valid word</p>

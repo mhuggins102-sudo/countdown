@@ -38,7 +38,8 @@ export type GameAction =
   | { type: 'NEXT_ROUND' }
   | { type: 'RETURN_TO_MENU' }
   | { type: 'START_BTC'; btcMode: BtcMode }
-  | { type: 'BTC_SUBMIT'; bonus: number };
+  | { type: 'BTC_SUBMIT'; bonus: number }
+  | { type: 'BTC_SKIP' };
 
 export const initialState: GameState = {
   mode: 'freeplay',
@@ -535,6 +536,22 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         timeRemaining: newTime,
         btcRoundsCompleted: state.btcRoundsCompleted + 1,
         btcLastBonus: action.bonus,
+        currentRoundState: createBtcRound(nextType),
+      };
+    }
+
+    case 'BTC_SKIP': {
+      if (state.mode !== 'btc' || !state.btcMode) return state;
+      const skipPenalty = -10;
+      const newTime = state.timeRemaining + skipPenalty;
+      if (newTime <= 0) {
+        return { ...state, timeRemaining: 0, timerRunning: false, screen: 'gameover' };
+      }
+      const nextType = pickBtcRoundType(state.btcMode);
+      return {
+        ...state,
+        timeRemaining: newTime,
+        btcLastBonus: skipPenalty,
         currentRoundState: createBtcRound(nextType),
       };
     }

@@ -164,6 +164,12 @@ export function BtcNumbersPlaying() {
           Submit
         </Button>
       </div>
+      <button
+        onClick={() => dispatch({ type: 'BTC_SKIP' })}
+        className="text-sm text-blue-400/60 hover:text-blue-300 transition-colors"
+      >
+        Skip (-10s)
+      </button>
     </div>
   );
 }
