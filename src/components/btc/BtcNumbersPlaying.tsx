@@ -46,7 +46,7 @@ export function BtcNumbersPlaying() {
   const currentAnswer = lastStep ? lastStep.result : null;
 
   const distance = currentAnswer !== null ? Math.abs(currentAnswer - round.target) : Infinity;
-  const canSubmit = distance <= 8;
+  const canSubmit = distance <= 20;
 
   const doSubmit = useCallback(() => {
     if (!canSubmit || currentAnswer === null) return;

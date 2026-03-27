@@ -67,8 +67,9 @@ export function numbersBtcBonus(distance: number): number {
   if (distance <= 2) return 20;
   if (distance <= 3) return 15;
   if (distance <= 5) return 10;
-  if (distance <= 8) return 5;
-  return 0;
+  if (distance <= 10) return 5;
+  if (distance <= 14) return 0;
+  return -5;
 }
 
 /** Conundrum always gives 30s for a correct answer */

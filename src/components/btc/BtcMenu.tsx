@@ -33,7 +33,7 @@ export function BtcMenu({ onBack }: { onBack: () => void }) {
         >
           <div className="text-xl font-bold text-white group-hover:text-[#fbbf24]">Numbers</div>
           <div className="text-sm text-blue-300 mt-1">
-            Get within 8 of the target to earn time
+            Get close to the target to earn time
           </div>
         </button>
 
