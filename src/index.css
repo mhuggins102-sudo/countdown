@@ -45,6 +45,16 @@ body {
   animation: btc-bonus 1.5s ease-out forwards;
 }
 
+@keyframes btc-penalty {
+  0% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  70% { opacity: 1; transform: translate(-50%, -30px) scale(1.2); }
+  100% { opacity: 0; transform: translate(-50%, -50px) scale(1); }
+}
+
+.animate-btc-penalty {
+  animation: btc-penalty 1.5s ease-out forwards;
+}
+
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
   20% { transform: translateX(-6px); }

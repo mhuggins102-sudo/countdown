@@ -24,8 +24,8 @@ export function BtcTimer({ timeRemaining, isRunning }: BtcTimerProps) {
   const prevTimeRef = useRef(timeRemaining);
   const animFrameRef = useRef<number>(0);
 
-  // Bonus popup state
-  const [bonusPopup, setBonusPopup] = useState<{ amount: number; key: number } | null>(null);
+  // Bonus/penalty popup state
+  const [bonusPopup, setBonusPopup] = useState<{ amount: number; key: number; isBonus: boolean } | null>(null);
   const bonusKeyRef = useRef(0);
 
   useEffect(() => {
@@ -33,16 +33,17 @@ export function BtcTimer({ timeRemaining, isRunning }: BtcTimerProps) {
     const diff = timeRemaining - prev;
     prevTimeRef.current = timeRemaining;
 
-    if (diff > 1) {
-      // Bonus was added — animate counting up
+    if (diff > 1 || diff < -1) {
+      // Bonus or penalty was applied — animate the count
       const startVal = prev;
       const endVal = timeRemaining;
-      const duration = Math.min(500, diff * 30); // ~30ms per second, max 500ms
+      const absDiff = Math.abs(diff);
+      const duration = Math.min(500, absDiff * 30); // ~30ms per second, max 500ms
       const startTime = performance.now();
 
-      // Show bonus popup
+      // Show popup
       bonusKeyRef.current += 1;
-      setBonusPopup({ amount: diff, key: bonusKeyRef.current });
+      setBonusPopup({ amount: diff, key: bonusKeyRef.current, isBonus: diff > 0 });
       setTimeout(() => setBonusPopup(null), 1500);
 
       const animate = (now: number) => {
@@ -95,13 +96,15 @@ export function BtcTimer({ timeRemaining, isRunning }: BtcTimerProps) {
         </span>
       </div>
 
-      {/* Bonus popup */}
+      {/* Bonus/penalty popup */}
       {bonusPopup && (
         <div
           key={bonusPopup.key}
-          className="absolute -top-2 left-1/2 -translate-x-1/2 text-green-400 font-bold text-2xl pointer-events-none animate-btc-bonus"
+          className={`absolute -top-2 left-1/2 -translate-x-1/2 font-bold text-2xl pointer-events-none ${
+            bonusPopup.isBonus ? 'text-green-400 animate-btc-bonus' : 'text-red-400 animate-btc-penalty'
+          }`}
         >
-          +{bonusPopup.amount}s
+          {bonusPopup.isBonus ? '+' : ''}{bonusPopup.amount}s
         </div>
       )}
     </div>
