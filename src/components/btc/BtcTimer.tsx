@@ -92,7 +92,7 @@ export function BtcTimer({ timeRemaining, isRunning }: BtcTimerProps) {
             timeRemaining <= 5 ? 'text-red-400' : 'text-white'
           } ${isRunning && timeRemaining <= 5 ? 'animate-pulse' : ''}`}
         >
-          {displayTime}
+          {Math.max(0, displayTime)}
         </span>
       </div>
 

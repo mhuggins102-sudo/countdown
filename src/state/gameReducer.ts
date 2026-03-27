@@ -530,6 +530,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case 'BTC_SUBMIT': {
       if (state.mode !== 'btc' || !state.btcMode) return state;
       const newTime = state.timeRemaining + action.bonus;
+      if (newTime <= 0) {
+        return { ...state, timeRemaining: 0, timerRunning: false, screen: 'gameover', btcRoundsCompleted: state.btcRoundsCompleted + 1 };
+      }
       const nextType = pickBtcRoundType(state.btcMode);
       return {
         ...state,
