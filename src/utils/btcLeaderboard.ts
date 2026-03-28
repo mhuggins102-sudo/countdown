@@ -35,7 +35,7 @@ export function getDailyLeaderboard(mode: BtcMode): LeaderboardEntry[] {
 }
 
 export function getAllTimeLeaderboard(mode: BtcMode): LeaderboardEntry[] {
-  return getLeaderboard(mode).slice(0, MAX_ENTRIES);
+  return getLeaderboard(mode);
 }
 
 /** Check if a score qualifies for the daily or all-time top 10 */

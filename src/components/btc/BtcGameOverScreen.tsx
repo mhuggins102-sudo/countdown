@@ -119,9 +119,13 @@ function LeaderboardList({ entries, currentScore, saved, savedTimestamp }: {
 }) {
   const top5 = entries.slice(0, 5);
 
+  // Rank of the current score among all entries in this list
+  const rank = entries.filter((e) => e.score > currentScore).length + 1;
+
   if (saved && savedTimestamp) {
-    // After save: show top 5, highlight the saved entry by timestamp
+    // After save: highlight the saved entry by timestamp
     const savedInTop5 = top5.some((e) => e.timestamp === savedTimestamp);
+    const savedEntry = entries.find((e) => e.timestamp === savedTimestamp);
 
     return (
       <div className="space-y-1">
@@ -137,20 +141,10 @@ function LeaderboardList({ entries, currentScore, saved, savedTimestamp }: {
             />
           ))
         )}
-        {!savedInTop5 && currentScore > 0 && (
+        {!savedInTop5 && savedEntry && (
           <>
             <div className="border-t border-[#2a4a7f]/50 my-1" />
-            {(() => {
-              const rank = entries.filter((e) => e.score > currentScore).length + 1;
-              const savedEntry = entries.find((e) => e.timestamp === savedTimestamp);
-              return (
-                <LeaderboardRow
-                  rank={rank}
-                  entry={savedEntry || { name: '???', score: currentScore, date: '', timestamp: 0 }}
-                  highlight
-                />
-              );
-            })()}
+            <LeaderboardRow rank={rank} entry={savedEntry} highlight />
           </>
         )}
       </div>
@@ -158,8 +152,8 @@ function LeaderboardList({ entries, currentScore, saved, savedTimestamp }: {
   }
 
   // Before save: show top 5 + "You" row at projected rank
-  const rank = entries.filter((e) => e.score > currentScore).length + 1;
-  const inTop5 = rank <= 5 && entries.length < 5;
+  // Rank is where this score would land if inserted
+  const wouldBeInTop5 = rank <= 5;
 
   return (
     <div className="space-y-1">
@@ -174,7 +168,7 @@ function LeaderboardList({ entries, currentScore, saved, savedTimestamp }: {
               entry={entry}
             />
           ))}
-          {!inTop5 && currentScore > 0 && (
+          {!wouldBeInTop5 && currentScore > 0 && (
             <>
               <div className="border-t border-[#2a4a7f]/50 my-1" />
               <LeaderboardRow
