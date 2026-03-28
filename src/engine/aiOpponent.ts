@@ -26,9 +26,10 @@ export function aiPickWord(
       return validWords[validWords.length - 1];
     }
     case 'medium': {
-      // 30% chance of longest word; otherwise equally likely 1 or 2 shorter
-      if (Math.random() < 0.3) return validWords[0];
-      const delta = Math.random() < 0.5 ? 1 : 2;
+      // 20% chance of longest word; otherwise 30% L-1, 50% L-2, 20% L-3
+      if (Math.random() < 0.2) return validWords[0];
+      const r = Math.random();
+      const delta = r < 0.3 ? 1 : r < 0.8 ? 2 : 3;
       const targetLen = Math.max(3, longest - delta);
       const candidates = validWords.filter((w) => w.length === targetLen);
       if (candidates.length > 0) return candidates[Math.floor(Math.random() * candidates.length)];
