@@ -4,6 +4,7 @@ import { useTimer } from '../../hooks/useTimer';
 import { LetterTile } from '../shared/LetterTile';
 import { Timer } from '../shared/Timer';
 import { Button } from '../shared/Button';
+import { isValidWord, canFormWord } from '../../engine/wordValidator';
 import type { LettersRoundState } from '../../types/game';
 
 export function LettersPlaying() {
@@ -13,6 +14,9 @@ export function LettersPlaying() {
   const [submitted, setSubmitted] = useState(false);
 
   const currentWord = selectedIndices.map((i) => round.letters[i]).join('');
+  const wordValid = currentWord.length > 0
+    && isValidWord(currentWord)
+    && canFormWord(currentWord, round.letters);
 
   const handleSubmit = useCallback(() => {
     if (currentWord.length > 0 && !submitted) {
@@ -111,6 +115,10 @@ export function LettersPlaying() {
           {submitted ? 'Submitted!' : 'Submit Word'}
         </Button>
       </div>
+
+      {!submitted && currentWord.length >= 2 && !wordValid && (
+        <p className="text-red-400/70 text-sm">Not a valid word</p>
+      )}
 
       {submitted && (
         <p className="text-blue-300 animate-fade-in">
