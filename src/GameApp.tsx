@@ -132,36 +132,45 @@ export function GameApp() {
         </button>
         <p className="text-blue-400/50 text-xs -mt-4">tap to change timer</p>
 
-        <div className="flex flex-col gap-4 w-full max-w-sm">
-          <button
-            onClick={() => setMenuScreen('difficulty')}
-            className="bg-gradient-to-r from-[#f59e0b] to-[#d97706] hover:from-[#fbbf24] hover:to-[#f59e0b] text-[#0a1628] shadow-lg shadow-amber-500/25 font-semibold rounded-lg transition-all duration-200 active:scale-95 px-8 py-4 text-xl"
-          >
-            Full Game
-          </button>
-          <button
-            onClick={() => setMenuScreen('challenge')}
-            className="bg-gradient-to-r from-[#8b5cf6] to-[#6d28d9] hover:from-[#a78bfa] hover:to-[#8b5cf6] text-white shadow-lg shadow-purple-500/25 font-semibold rounded-lg transition-all duration-200 active:scale-95 px-8 py-4 text-xl"
-          >
-            Challenge a Friend
-          </button>
-          <button
-            onClick={() => setMenuScreen('btc')}
-            className="bg-gradient-to-r from-[#ef4444] to-[#dc2626] hover:from-[#f87171] hover:to-[#ef4444] text-white shadow-lg shadow-red-500/25 font-semibold rounded-lg transition-all duration-200 active:scale-95 px-8 py-4 text-xl"
-          >
-            Beat the Clock
-          </button>
-          <button
-            onClick={() => setMenuScreen('freeplay')}
-            className="bg-[#3b82f6] hover:bg-[#2563eb] text-white shadow-lg shadow-blue-500/25 font-semibold rounded-lg transition-all duration-200 active:scale-95 px-8 py-4 text-xl"
-          >
-            Free Play
-          </button>
-        </div>
+        <div className="flex flex-col gap-6 w-full max-w-sm">
+          {/* Full Game section */}
+          <div>
+            <h2 className="text-sm font-semibold text-blue-400 uppercase tracking-wider mb-3 text-center">Full Game (15 Rounds)</h2>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setMenuScreen('difficulty')}
+                className="flex-1 bg-gradient-to-r from-[#f59e0b] to-[#d97706] hover:from-[#fbbf24] hover:to-[#f59e0b] text-[#0a1628] shadow-lg shadow-amber-500/25 font-semibold rounded-lg transition-all duration-200 active:scale-95 px-4 py-4 text-lg"
+              >
+                AI Opponent
+              </button>
+              <button
+                onClick={() => setMenuScreen('challenge')}
+                className="flex-1 bg-gradient-to-r from-[#8b5cf6] to-[#6d28d9] hover:from-[#a78bfa] hover:to-[#8b5cf6] text-white shadow-lg shadow-purple-500/25 font-semibold rounded-lg transition-all duration-200 active:scale-95 px-4 py-4 text-lg"
+              >
+                Human Opponent
+              </button>
+            </div>
+          </div>
 
-        <p className="text-blue-400/50 text-sm mt-8">
-          15 rounds: 10 letters, 4 numbers, 1 conundrum
-        </p>
+          {/* Practice Modes section */}
+          <div>
+            <h2 className="text-sm font-semibold text-blue-400 uppercase tracking-wider mb-3 text-center">Practice Modes</h2>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => setMenuScreen('btc')}
+                className="bg-gradient-to-r from-[#ef4444] to-[#dc2626] hover:from-[#f87171] hover:to-[#ef4444] text-white shadow-lg shadow-red-500/25 font-semibold rounded-lg transition-all duration-200 active:scale-95 px-8 py-4 text-xl"
+              >
+                Beat the Clock
+              </button>
+              <button
+                onClick={() => setMenuScreen('freeplay')}
+                className="bg-[#3b82f6] hover:bg-[#2563eb] text-white shadow-lg shadow-blue-500/25 font-semibold rounded-lg transition-all duration-200 active:scale-95 px-8 py-4 text-xl"
+              >
+                Free Play
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

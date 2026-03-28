@@ -31,15 +31,18 @@ export function BtcConundrumPlaying() {
     };
   }, []);
 
+  // Bonus decreases by 5s for each hint revealed (after the first), minimum 0
+  const conundrumBonus = Math.max(0, CONUNDRUM_BTC_BONUS - Math.max(0, hintsRevealed - 1) * 5);
+
   // Auto-submit when all 9 tiles form a valid answer
   useEffect(() => {
     if (selectedIndices.length === 9) {
       const word = selectedIndices.map((i) => scrambledLetters[i]).join('');
       if (isConundrumCorrect(word, round.answer)) {
-        dispatch({ type: 'BTC_SUBMIT', bonus: CONUNDRUM_BTC_BONUS });
+        dispatch({ type: 'BTC_SUBMIT', bonus: conundrumBonus });
       }
     }
-  }, [selectedIndices, scrambledLetters, round.answer, dispatch]);
+  }, [selectedIndices, scrambledLetters, round.answer, dispatch, conundrumBonus]);
 
   const handleTileClick = (index: number) => {
     if (selectedIndices.includes(index)) {
@@ -52,8 +55,11 @@ export function BtcConundrumPlaying() {
 
   return (
     <div className="flex flex-col items-center gap-5">
-      <div className="bg-[#1a2d50] rounded-xl px-6 py-2">
+      <div className="bg-[#1a2d50] rounded-xl px-6 py-2 text-center">
         <span className="text-sm text-purple-400 font-semibold">Conundrum</span>
+        {hintsRevealed > 1 && conundrumBonus < CONUNDRUM_BTC_BONUS && (
+          <div className="text-xs text-purple-300/70 mt-0.5">Solve now: +{conundrumBonus}s</div>
+        )}
       </div>
 
       {/* Scrambled letter tiles */}
