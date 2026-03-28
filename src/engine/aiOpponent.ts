@@ -13,28 +13,39 @@ export function aiPickWord(
 
   switch (difficulty) {
     case 'easy': {
-      // Pick a word 3-5 letters long, or the best if nothing shorter exists
-      const shortWords = validWords.filter((w) => w.length >= 3 && w.length <= 5);
-      if (shortWords.length > 0) {
-        return shortWords[Math.floor(Math.random() * Math.min(5, shortWords.length))];
-      }
-      return validWords[validWords.length - 1]; // shortest available
+      // 5% chance of longest word; otherwise 50% three shorter, 30% two shorter, 20% one shorter
+      if (Math.random() < 0.05) return validWords[0];
+      const r = Math.random();
+      const delta = r < 0.5 ? 3 : r < 0.8 ? 2 : 1;
+      const targetLen = Math.max(3, longest - delta);
+      const candidates = validWords.filter((w) => w.length === targetLen);
+      if (candidates.length > 0) return candidates[Math.floor(Math.random() * candidates.length)];
+      // Fall back to closest available shorter word
+      const shorter = validWords.filter((w) => w.length <= targetLen);
+      if (shorter.length > 0) return shorter[0];
+      return validWords[validWords.length - 1];
     }
     case 'medium': {
-      // Pick a word 1-2 letters shorter than the best, or the best 40% of the time
-      if (Math.random() < 0.4) return validWords[0];
-      const targetLen = Math.max(3, longest - Math.floor(Math.random() * 2) - 1);
-      const candidates = validWords.filter((w) => w.length >= targetLen - 1 && w.length <= targetLen);
-      if (candidates.length > 0) {
-        return candidates[Math.floor(Math.random() * Math.min(3, candidates.length))];
-      }
+      // 30% chance of longest word; otherwise equally likely 1 or 2 shorter
+      if (Math.random() < 0.3) return validWords[0];
+      const delta = Math.random() < 0.5 ? 1 : 2;
+      const targetLen = Math.max(3, longest - delta);
+      const candidates = validWords.filter((w) => w.length === targetLen);
+      if (candidates.length > 0) return candidates[Math.floor(Math.random() * candidates.length)];
+      const shorter = validWords.filter((w) => w.length <= targetLen);
+      if (shorter.length > 0) return shorter[0];
       return validWords[Math.min(2, validWords.length - 1)];
     }
     case 'hard': {
-      // Pick the best word 70% of the time, second-best 30%
-      if (Math.random() < 0.7 || validWords.length === 1) return validWords[0];
-      const secondBest = validWords.find((w) => w.length === longest - 1) || validWords[1];
-      return secondBest;
+      // 50% chance of longest word; otherwise 75% one shorter, 25% two shorter
+      if (Math.random() < 0.5 || validWords.length === 1) return validWords[0];
+      const delta = Math.random() < 0.75 ? 1 : 2;
+      const targetLen = Math.max(3, longest - delta);
+      const candidates = validWords.filter((w) => w.length === targetLen);
+      if (candidates.length > 0) return candidates[Math.floor(Math.random() * candidates.length)];
+      const shorter = validWords.filter((w) => w.length <= targetLen);
+      if (shorter.length > 0) return shorter[0];
+      return validWords[0]; // fall back to best
     }
   }
 }
