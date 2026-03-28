@@ -141,13 +141,13 @@ export function GameApp() {
                 onClick={() => setMenuScreen('difficulty')}
                 className="flex-1 bg-gradient-to-r from-[#f59e0b] to-[#d97706] hover:from-[#fbbf24] hover:to-[#f59e0b] text-[#0a1628] shadow-lg shadow-amber-500/25 font-semibold rounded-lg transition-all duration-200 active:scale-95 px-4 py-4 text-lg"
               >
-                AI Opponent
+                Play vs AI
               </button>
               <button
                 onClick={() => setMenuScreen('challenge')}
                 className="flex-1 bg-gradient-to-r from-[#8b5cf6] to-[#6d28d9] hover:from-[#a78bfa] hover:to-[#8b5cf6] text-white shadow-lg shadow-purple-500/25 font-semibold rounded-lg transition-all duration-200 active:scale-95 px-4 py-4 text-lg"
               >
-                Human Opponent
+                Play vs Friend
               </button>
             </div>
           </div>
@@ -155,16 +155,16 @@ export function GameApp() {
           {/* Practice Modes section */}
           <div>
             <h2 className="text-sm font-semibold text-blue-400 uppercase tracking-wider mb-3 text-center">Practice Modes</h2>
-            <div className="flex flex-col gap-3">
+            <div className="flex gap-3">
               <button
                 onClick={() => setMenuScreen('btc')}
-                className="bg-gradient-to-r from-[#ef4444] to-[#dc2626] hover:from-[#f87171] hover:to-[#ef4444] text-white shadow-lg shadow-red-500/25 font-semibold rounded-lg transition-all duration-200 active:scale-95 px-8 py-4 text-xl"
+                className="flex-1 bg-gradient-to-r from-[#ef4444] to-[#dc2626] hover:from-[#f87171] hover:to-[#ef4444] text-white shadow-lg shadow-red-500/25 font-semibold rounded-lg transition-all duration-200 active:scale-95 px-4 py-4 text-lg"
               >
                 Beat the Clock
               </button>
               <button
                 onClick={() => setMenuScreen('freeplay')}
-                className="bg-[#3b82f6] hover:bg-[#2563eb] text-white shadow-lg shadow-blue-500/25 font-semibold rounded-lg transition-all duration-200 active:scale-95 px-8 py-4 text-xl"
+                className="flex-1 bg-[#3b82f6] hover:bg-[#2563eb] text-white shadow-lg shadow-blue-500/25 font-semibold rounded-lg transition-all duration-200 active:scale-95 px-4 py-4 text-lg"
               >
                 Free Play
               </button>

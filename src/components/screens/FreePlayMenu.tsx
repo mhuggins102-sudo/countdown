@@ -49,7 +49,7 @@ export function FreePlayMenu({ onBack, timerDuration }: { onBack: () => void; ti
         >
           <div className="text-xl font-bold text-white group-hover:text-[#fbbf24]">Letters</div>
           <div className="text-sm text-blue-300 mt-1">
-            Pick 9 letters and find the longest word
+            Find the longest word out of 9 letters
           </div>
         </button>
 
@@ -69,7 +69,7 @@ export function FreePlayMenu({ onBack, timerDuration }: { onBack: () => void; ti
         >
           <div className="text-xl font-bold text-white group-hover:text-[#fbbf24]">Conundrum</div>
           <div className="text-sm text-blue-300 mt-1">
-            Unscramble a 9-letter word in time
+            Unscramble a 9-letter word
           </div>
         </button>
       </div>

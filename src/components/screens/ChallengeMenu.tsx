@@ -110,7 +110,7 @@ export function ChallengeMenu({ onBack, timerDuration }: { onBack: () => void; t
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen gap-8 px-4">
-      <h1 className="text-4xl font-bold text-white">Challenge</h1>
+      <h1 className="text-4xl font-bold text-white">Full Game vs Friend</h1>
 
       {/* Create challenge */}
       <div className="w-full max-w-sm">
