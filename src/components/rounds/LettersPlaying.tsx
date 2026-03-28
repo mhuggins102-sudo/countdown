@@ -12,6 +12,7 @@ export function LettersPlaying() {
   const round = state.currentRoundState as LettersRoundState;
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [submitted, setSubmitted] = useState(false);
+  const [shake, setShake] = useState(false);
 
   const currentWord = selectedIndices.map((i) => round.letters[i]).join('');
   const wordValid = currentWord.length > 0
@@ -19,11 +20,15 @@ export function LettersPlaying() {
     && canFormWord(currentWord, round.letters);
 
   const handleSubmit = useCallback(() => {
-    if (currentWord.length > 0 && !submitted) {
-      setSubmitted(true);
-      dispatch({ type: 'SUBMIT_LETTERS_WORD', word: currentWord });
+    if (submitted) return;
+    if (!wordValid) {
+      setShake(true);
+      setTimeout(() => setShake(false), 400);
+      return;
     }
-  }, [currentWord, submitted, dispatch]);
+    setSubmitted(true);
+    dispatch({ type: 'SUBMIT_LETTERS_WORD', word: currentWord });
+  }, [currentWord, submitted, wordValid, dispatch]);
 
   // When submitted manually, wait briefly then transition to reveal
   useEffect(() => {
@@ -111,9 +116,11 @@ export function LettersPlaying() {
         <Button variant="secondary" size="sm" onClick={handleUndo} disabled={submitted || selectedIndices.length === 0}>
           Undo
         </Button>
-        <Button variant="gold" size="lg" onClick={handleSubmit} disabled={submitted || currentWord.length === 0}>
-          {submitted ? 'Submitted!' : 'Submit Word'}
-        </Button>
+        <div className={shake ? 'animate-shake' : ''}>
+          <Button variant="gold" size="lg" onClick={handleSubmit} disabled={submitted || currentWord.length === 0}>
+            {submitted ? 'Submitted!' : 'Submit Word'}
+          </Button>
+        </div>
       </div>
 
       {!submitted && currentWord.length >= 2 && !wordValid && (
