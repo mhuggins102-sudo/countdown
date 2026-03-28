@@ -5,6 +5,7 @@ import { Button } from '../shared/Button';
 import { createNumberPool, drawLargeNumber, drawSmallNumber, aiPickNumberType, type NumberPool } from '../../engine/letterPicker';
 import type { NumbersRoundState, Difficulty } from '../../types/game';
 import { useChallengeOpponent } from '../../hooks/useChallengeOpponent';
+import { submitPicks } from '../../api/liveApi';
 
 const LARGE_NUMS = [25, 50, 75, 100];
 
@@ -14,6 +15,11 @@ export function NumbersPicking() {
   const poolRef = useRef<NumberPool>(createNumberPool());
   const { hasOpponent, result: opponentResult } = useChallengeOpponent();
   const isChallengeReveal = hasOpponent && !!opponentResult?.numbers?.length;
+
+  // Live mode P2: reveal numbers from host's picks
+  const isLiveP2 = state.mode === 'live' && !state.liveData?.isHost;
+  const livePicks = state.liveData?.currentPicks;
+  const isLiveReveal = isLiveP2 && !!livePicks?.numbers?.length;
 
   const canPickLarge = round.largeCount < 4 && round.numbers.length < 6;
   const canPickSmall = round.numbers.length < 6;
@@ -44,6 +50,33 @@ export function NumbersPicking() {
     }
   }, [isChallengeReveal, round.numbers.length, opponentResult, dispatch]);
 
+  // Live host: submit picks to server when all numbers are picked
+  const picksSubmitted = useRef(false);
+  useEffect(() => {
+    if (state.mode === 'live' && state.liveData?.isHost && round.numbers.length === 6 && !picksSubmitted.current) {
+      picksSubmitted.current = true;
+      submitPicks(state.liveData.code, state.liveData.playerId, {
+        roundIndex: state.currentRound,
+        roundType: 'numbers',
+        numbers: round.numbers,
+        target: round.target,
+      });
+    }
+  }, [state.mode, state.liveData, round.numbers.length, round.numbers, round.target, state.currentRound]);
+
+  // Live P2: auto-reveal host's numbers one at a time
+  useEffect(() => {
+    if (isLiveReveal && round.numbers.length < 6) {
+      const nextNum = livePicks!.numbers![round.numbers.length];
+      if (nextNum == null) return;
+      const isLarge = LARGE_NUMS.includes(nextNum);
+      const timer = setTimeout(() => {
+        dispatch({ type: 'PICK_NUMBER', number: nextNum, isLarge });
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, [isLiveReveal, round.numbers.length, livePicks, dispatch]);
+
   // AI auto-picks numbers one at a time
   useEffect(() => {
     if (!isChallengeReveal && !round.isPlayerPicking && round.numbers.length < 6) {
@@ -60,11 +93,13 @@ export function NumbersPicking() {
     }
   }, [isChallengeReveal, round.isPlayerPicking, round.numbers.length, round.largeCount, round.smallCount, state.difficulty, pickNumber]);
 
-  const heading = isChallengeReveal
+  const heading = isChallengeReveal || isLiveReveal
     ? 'Revealing numbers...'
-    : round.isPlayerPicking
-      ? 'Pick your numbers'
-      : 'AI is picking numbers...';
+    : isLiveP2 && !livePicks
+      ? 'Waiting for host to pick...'
+      : round.isPlayerPicking
+        ? 'Pick your numbers'
+        : 'AI is picking numbers...';
 
   return (
     <div className="flex flex-col items-center gap-6">

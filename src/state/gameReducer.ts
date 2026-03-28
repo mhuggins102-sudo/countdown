@@ -10,6 +10,8 @@ import type {
   ConundrumRoundState,
   ChallengeData,
   ChallengeRoundResult,
+  LiveRoundPicks,
+  LiveRoundSubmission,
 } from '../types/game';
 import { ROUND_ORDER, TIMER_DURATION } from '../types/game';
 
@@ -39,7 +41,14 @@ export type GameAction =
   | { type: 'RETURN_TO_MENU' }
   | { type: 'START_BTC'; btcMode: BtcMode }
   | { type: 'BTC_SUBMIT'; bonus: number }
-  | { type: 'BTC_SKIP' };
+  | { type: 'BTC_SKIP' }
+  | { type: 'START_LIVE_HOST'; seed: number; code: string; timerDuration: number; playerId: string; playerName: string }
+  | { type: 'START_LIVE_JOIN'; seed: number; code: string; timerDuration: number; playerId: string; playerName: string; opponentName: string }
+  | { type: 'LIVE_OPPONENT_JOINED'; opponentName: string }
+  | { type: 'LIVE_PICKS_READY'; picks: LiveRoundPicks }
+  | { type: 'LIVE_OPPONENT_SUBMITTED'; result: LiveRoundSubmission; opponentTotalScore: number }
+  | { type: 'LIVE_SET_WAITING'; waiting: boolean }
+  | { type: 'LIVE_UPDATE_HEARTBEAT'; opponentLastSeen: number };
 
 export const initialState: GameState = {
   mode: 'freeplay',
@@ -60,6 +69,7 @@ export const initialState: GameState = {
   btcRoundsCompleted: 0,
   btcRoundKey: 0,
   btcLastBonus: 0,
+  liveData: null,
 };
 
 function isPlayerPickingRound(roundIndex: number): boolean {
@@ -474,7 +484,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
     case 'NEXT_ROUND': {
       const nextRound = state.currentRound + 1;
-      const isMultiRound = state.mode === 'fullgame' || state.mode === 'challenge';
+      const isMultiRound = state.mode === 'fullgame' || state.mode === 'challenge' || state.mode === 'live';
       const totalRounds = isMultiRound ? ROUND_ORDER.length : Infinity;
 
       if (nextRound >= totalRounds) {
@@ -493,8 +503,14 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         ? rngForRound(state.challengeData.seed, nextRound)
         : undefined;
 
-      const baseRound = createRoundState(roundType, nextRound, state.difficulty === 'off', rng);
-      const isP2 = !!state.challengeData?.opponentResults?.length;
+      let baseRound = createRoundState(roundType, nextRound, state.difficulty === 'off', rng);
+      // Live P2: disable player picking (will wait for host's picks)
+      if (state.mode === 'live' && state.liveData && !state.liveData.isHost) {
+        if (baseRound.type === 'letters' || baseRound.type === 'numbers') {
+          baseRound = { ...baseRound, isPlayerPicking: false };
+        }
+      }
+      const isP2 = state.mode === 'challenge' && !!state.challengeData?.opponentResults?.length;
       const { round: roundState, skipPicking } = isP2
         ? applyOpponentPicks(baseRound, state.challengeData!.opponentResults[nextRound])
         : { round: baseRound, skipPicking: false };
@@ -507,6 +523,15 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         timerRunning: startPlaying,
         timeRemaining: state.timerDuration,
         currentRoundState: roundState,
+        // Reset live data for new round
+        ...(state.liveData ? {
+          liveData: {
+            ...state.liveData,
+            currentPicks: null,
+            opponentResult: null,
+            submitted: false,
+          },
+        } : {}),
       };
     }
 
@@ -560,6 +585,145 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         btcRoundKey: state.btcRoundKey + 1,
         btcLastBonus: skipPenalty,
         currentRoundState: createBtcRound(nextType),
+      };
+    }
+
+    case 'START_LIVE_HOST': {
+      const rng = rngForRound(action.seed, 0);
+      return {
+        ...initialState,
+        mode: 'live',
+        difficulty: 'off',
+        screen: 'playing',
+        currentRound: 0,
+        phase: 'picking',
+        timerDuration: action.timerDuration,
+        timeRemaining: action.timerDuration,
+        currentRoundState: createRoundState(ROUND_ORDER[0], 0, true, rng),
+        liveData: {
+          code: action.code,
+          playerId: action.playerId,
+          isHost: true,
+          opponentName: '',
+          opponentJoined: false,
+          currentPicks: null,
+          opponentResult: null,
+          submitted: false,
+          opponentTotalScore: 0,
+          opponentLastSeen: 0,
+        },
+        challengeData: {
+          seed: action.seed,
+          code: action.code,
+          timerDuration: action.timerDuration,
+          opponentName: '',
+          opponentResults: [],
+          opponentTotalScore: 0,
+        },
+      };
+    }
+
+    case 'START_LIVE_JOIN': {
+      // P2 joins: start at round 0 with picking phase — will wait for picks from P1
+      const joinRng = rngForRound(action.seed, 0);
+      const joinRoundType = ROUND_ORDER[0];
+      let joinRound = createRoundState(joinRoundType, 0, true, joinRng);
+      // P2 shouldn't pick — they wait for host's picks
+      if (joinRound.type === 'letters' || joinRound.type === 'numbers') {
+        joinRound = { ...joinRound, isPlayerPicking: false };
+      }
+      // For conundrum rounds, start playing immediately
+      const joinStartPlaying = joinRoundType === 'conundrum';
+      return {
+        ...initialState,
+        mode: 'live',
+        difficulty: 'off',
+        screen: 'playing',
+        currentRound: 0,
+        phase: joinStartPlaying ? 'playing' : 'picking',
+        timerRunning: joinStartPlaying,
+        timerDuration: action.timerDuration,
+        timeRemaining: action.timerDuration,
+        currentRoundState: joinRound,
+        liveData: {
+          code: action.code,
+          playerId: action.playerId,
+          isHost: false,
+          opponentName: action.opponentName,
+          opponentJoined: true,
+          currentPicks: null,
+          opponentResult: null,
+          submitted: false,
+          opponentTotalScore: 0,
+          opponentLastSeen: Date.now(),
+        },
+        challengeData: {
+          seed: action.seed,
+          code: action.code,
+          timerDuration: action.timerDuration,
+          opponentName: action.opponentName,
+          opponentResults: [],
+          opponentTotalScore: 0,
+        },
+      };
+    }
+
+    case 'LIVE_OPPONENT_JOINED': {
+      if (!state.liveData) return state;
+      return {
+        ...state,
+        liveData: {
+          ...state.liveData,
+          opponentJoined: true,
+          opponentName: action.opponentName,
+          opponentLastSeen: Date.now(),
+        },
+      };
+    }
+
+    case 'LIVE_PICKS_READY': {
+      if (!state.liveData) return state;
+      // For P2: apply picks to the current round so picking component can animate them
+      return {
+        ...state,
+        liveData: {
+          ...state.liveData,
+          currentPicks: action.picks,
+        },
+      };
+    }
+
+    case 'LIVE_OPPONENT_SUBMITTED': {
+      if (!state.liveData) return state;
+      return {
+        ...state,
+        liveData: {
+          ...state.liveData,
+          opponentResult: action.result,
+          opponentTotalScore: action.opponentTotalScore,
+        },
+      };
+    }
+
+    case 'LIVE_SET_WAITING': {
+      if (!state.liveData) return state;
+      return {
+        ...state,
+        liveData: {
+          ...state.liveData,
+          submitted: action.waiting,
+        },
+      };
+    }
+
+    case 'LIVE_UPDATE_HEARTBEAT': {
+      if (!state.liveData) return state;
+      return {
+        ...state,
+        liveData: {
+          ...state.liveData,
+          opponentLastSeen: action.opponentLastSeen,
+        },
       };
     }
 

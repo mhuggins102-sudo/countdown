@@ -36,14 +36,20 @@ function roundToResult(round: RoundState): ChallengeRoundResult {
 export function GameOverScreen({ onPlayAgain }: { onPlayAgain: () => void }) {
   const { state } = useGame();
   const isChallenge = state.mode === 'challenge';
+  const isLive = state.mode === 'live';
   const hasOpponent = isChallenge && !!state.challengeData?.opponentResults?.length;
   const isP1 = isChallenge && !hasOpponent;
 
   // For P2 challenge, aiTotalScore accumulated P1's head-to-head scores during reveal
-  const opponentScore = state.aiTotalScore;
-  const opponentLabel = hasOpponent
-    ? (state.challengeData!.opponentName || 'Challenger')
-    : 'AI';
+  // For live mode, use liveData opponent score
+  const opponentScore = isLive
+    ? (state.liveData?.opponentTotalScore ?? 0)
+    : state.aiTotalScore;
+  const opponentLabel = isLive
+    ? (state.liveData?.opponentName || 'Opponent')
+    : hasOpponent
+      ? (state.challengeData!.opponentName || 'Challenger')
+      : 'AI';
 
   const playerWon = state.playerTotalScore > opponentScore;
   const tied = state.playerTotalScore === opponentScore;
@@ -54,9 +60,9 @@ export function GameOverScreen({ onPlayAgain }: { onPlayAgain: () => void }) {
   const [copied, setCopied] = useState(false);
   const challengeCode = state.challengeData?.code || '';
 
-  // Auto-upload challenge results
+  // Auto-upload challenge results (not for live mode)
   useEffect(() => {
-    if (!isChallenge || uploaded || uploading) return;
+    if (isLive || !isChallenge || uploaded || uploading) return;
     setUploading(true);
 
     const results = state.rounds.map(roundToResult);
@@ -101,7 +107,7 @@ export function GameOverScreen({ onPlayAgain }: { onPlayAgain: () => void }) {
         setUploading(false);
       }).catch(() => setUploading(false));
     }
-  }, [isChallenge, isP1, uploaded, uploading, state]);
+  }, [isLive, isChallenge, isP1, uploaded, uploading, state]);
 
   const handleCopy = async () => {
     const url = `${window.location.origin}?challenge=${challengeCode}`;
@@ -225,7 +231,7 @@ export function GameOverScreen({ onPlayAgain }: { onPlayAgain: () => void }) {
 
       <div className="flex gap-4">
         <Button variant="gold" size="lg" onClick={onPlayAgain}>
-          {isChallenge ? 'Back to Menu' : 'Play Again'}
+          {isChallenge || isLive ? 'Back to Menu' : 'Play Again'}
         </Button>
       </div>
     </div>

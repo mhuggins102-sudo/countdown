@@ -5,14 +5,18 @@ interface ScoreBarProps {
   totalRounds: number;
   roundType: string;
   isChallenge?: boolean;
+  isLive?: boolean;
   opponentName?: string;
+  opponentJoined?: boolean;
 }
 
-export function ScoreBar({ playerScore, opponentScore, currentRound, totalRounds, roundType, isChallenge, opponentName }: ScoreBarProps) {
+export function ScoreBar({ playerScore, opponentScore, currentRound, totalRounds, roundType, isChallenge, isLive, opponentName, opponentJoined }: ScoreBarProps) {
   const isP1 = isChallenge && !opponentName;
-  const opponentLabel = isChallenge
-    ? (opponentName || 'Challenger')
-    : 'AI';
+  const opponentLabel = isLive
+    ? (opponentName || 'Opponent')
+    : isChallenge
+      ? (opponentName || 'Challenger')
+      : 'AI';
 
   return (
     <div className="grid grid-cols-[1fr_auto_1fr] items-center bg-[#1a2d50] rounded-xl px-5 py-3 mb-6">
@@ -32,6 +36,11 @@ export function ScoreBar({ playerScore, opponentScore, currentRound, totalRounds
         <div className="flex flex-col items-center ml-auto pr-2 opacity-40">
           <span className="text-xs text-blue-300 uppercase tracking-wider">vs</span>
           <span className="text-sm text-blue-300">TBD</span>
+        </div>
+      ) : isLive && !opponentJoined ? (
+        <div className="flex flex-col items-center ml-auto pr-2 opacity-40">
+          <span className="text-xs text-blue-300 uppercase tracking-wider">vs</span>
+          <span className="text-sm text-blue-300 animate-pulse">Waiting...</span>
         </div>
       ) : (
         <div className="flex flex-col items-center ml-auto pr-2">

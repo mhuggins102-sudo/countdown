@@ -1,18 +1,25 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useGame } from '../../hooks/useGame';
 import { Button } from '../shared/Button';
+import { WaitingOverlay } from '../shared/WaitingOverlay';
 import { isValidWord, canFormWord } from '../../engine/wordValidator';
 import { findLongestWord } from '../../engine/wordFinder';
 import { aiPickWord } from '../../engine/aiOpponent';
 import { scoreLettersRound } from '../../engine/scoring';
 import type { LettersRoundState } from '../../types/game';
 import { useChallengeOpponent } from '../../hooks/useChallengeOpponent';
+import { submitLiveResult } from '../../api/liveApi';
 
 export function LettersReveal() {
   const { state, dispatch } = useGame();
   const round = state.currentRoundState as LettersRoundState;
   const { isP1, hasOpponent, opponentName, result: opponentResult } = useChallengeOpponent();
   const [revealed, setRevealed] = useState(false);
+  const liveSubmitted = useRef(false);
+
+  const isLive = state.mode === 'live';
+  const liveData = state.liveData;
+  const liveOpponentResult = liveData?.opponentResult;
 
   useEffect(() => {
     if (revealed) return;
@@ -30,15 +37,27 @@ export function LettersReveal() {
 
     dispatch({
       type: 'SET_ROUND_RESULTS',
-      playerScore: scores.playerScore,
-      aiScore: scores.aiScore,
+      playerScore: isLive ? scores.playerScore : scores.playerScore,
+      aiScore: isLive ? 0 : scores.aiScore,
       extras: {
         aiWord,
         bestWord,
         playerWordValid: scores.playerWordValid,
       },
     });
-  }, [revealed, round, state.mode, state.difficulty, hasOpponent, opponentResult, dispatch]);
+
+    // Submit result to server in live mode
+    if (isLive && liveData && !liveSubmitted.current) {
+      liveSubmitted.current = true;
+      submitLiveResult(liveData.code, liveData.playerId, {
+        roundIndex: state.currentRound,
+        roundType: 'letters',
+        answer: round.playerWord,
+        score: scores.playerScore,
+      });
+      dispatch({ type: 'LIVE_SET_WAITING', waiting: true });
+    }
+  }, [revealed, round, state.mode, state.difficulty, hasOpponent, opponentResult, isLive, liveData, state.currentRound, dispatch]);
 
   if (!revealed || state.phase !== 'reveal') return null;
 
@@ -103,6 +122,33 @@ export function LettersReveal() {
         );
       })()}
 
+      {/* Live opponent result */}
+      {isLive && liveOpponentResult && (() => {
+        const oppWord = liveOpponentResult.answer || '';
+        const oppValid = oppWord.length > 0 && isValidWord(oppWord) && canFormWord(oppWord, round.letters);
+        return (
+          <div className="bg-[#1a2d50] rounded-xl p-4 w-full max-w-md">
+            <div className="text-sm text-emerald-400 mb-1">{liveData?.opponentName || 'Opponent'}'s word</div>
+            <div className="flex items-center justify-between">
+              <span className="text-2xl font-bold text-white">
+                {oppWord || '(none)'}
+              </span>
+              <div className="flex items-center gap-2">
+                {oppWord && (
+                  <span className={`text-sm ${oppValid ? 'text-green-400' : 'text-red-400'}`}>
+                    {oppValid ? 'Valid' : 'Invalid'}
+                  </span>
+                )}
+                <span className="text-2xl font-bold text-[#fbbf24]">+{liveOpponentResult.score}</span>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Waiting for live opponent */}
+      {isLive && !liveOpponentResult && <WaitingOverlay />}
+
       {/* Best word (Dictionary Corner) */}
       <div className="bg-[#0a1628] border border-[#2a4a7f] rounded-xl p-4 w-full max-w-md">
         <div className="text-sm text-[#fbbf24] mb-1">Dictionary Corner</div>
@@ -120,6 +166,7 @@ export function LettersReveal() {
         variant="primary"
         size="lg"
         onClick={() => dispatch({ type: 'NEXT_ROUND' })}
+        disabled={isLive && !liveOpponentResult}
       >
         {state.mode === 'freeplay' ? 'Play Again' : state.currentRound >= 14 ? 'See Final Scores' : 'Next Round'}
       </Button>

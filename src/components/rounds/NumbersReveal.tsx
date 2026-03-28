@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useGame } from '../../hooks/useGame';
 import { Button } from '../shared/Button';
+import { WaitingOverlay } from '../shared/WaitingOverlay';
 import { SolutionSteps } from './SolutionSteps';
 import { solveNumbers } from '../../engine/numbersSolver';
 import { aiPickNumber } from '../../engine/aiOpponent';
@@ -8,12 +9,18 @@ import { scoreNumbersRound } from '../../engine/scoring';
 import { displayOp, getOriginalHighlights } from '../../engine/expressionEval';
 import type { NumbersRoundState, SolutionStep } from '../../types/game';
 import { useChallengeOpponent } from '../../hooks/useChallengeOpponent';
+import { submitLiveResult } from '../../api/liveApi';
 
 export function NumbersReveal() {
   const { state, dispatch } = useGame();
   const round = state.currentRoundState as NumbersRoundState;
   const [revealed, setRevealed] = useState(false);
   const { isP1, hasOpponent, opponentName, result: opponentResult } = useChallengeOpponent();
+  const liveSubmitted = useRef(false);
+
+  const isLive = state.mode === 'live';
+  const liveData = state.liveData;
+  const liveOpponentResult = liveData?.opponentResult;
 
   useEffect(() => {
     if (revealed) return;
@@ -34,14 +41,27 @@ export function NumbersReveal() {
     dispatch({
       type: 'SET_ROUND_RESULTS',
       playerScore: scores.playerScore,
-      aiScore: scores.aiScore,
+      aiScore: isLive ? 0 : scores.aiScore,
       extras: {
         aiAnswer,
         aiSteps: aiResult?.steps ?? [],
         solution: steps,
       },
     });
-  }, [revealed, round, state.mode, state.difficulty, hasOpponent, opponentResult, dispatch]);
+
+    // Submit result to server in live mode
+    if (isLive && liveData && !liveSubmitted.current) {
+      liveSubmitted.current = true;
+      submitLiveResult(liveData.code, liveData.playerId, {
+        roundIndex: state.currentRound,
+        roundType: 'numbers',
+        answer: String(round.playerAnswer ?? ''),
+        score: scores.playerScore,
+        steps: round.playerSteps,
+      });
+      dispatch({ type: 'LIVE_SET_WAITING', waiting: true });
+    }
+  }, [revealed, round, state.mode, state.difficulty, hasOpponent, opponentResult, isLive, liveData, state.currentRound, dispatch]);
 
   if (!revealed || state.phase !== 'reveal') return null;
 
@@ -140,6 +160,36 @@ export function NumbersReveal() {
         </div>
       )}
 
+      {/* Live opponent result */}
+      {isLive && liveOpponentResult && (() => {
+        const liveOppAnswer = liveOpponentResult.answer ? Number(liveOpponentResult.answer) : null;
+        const liveOppDist = liveOppAnswer !== null && !isNaN(liveOppAnswer) ? Math.abs(liveOppAnswer - round.target) : null;
+        return (
+          <div className="bg-[#1a2d50] rounded-xl p-4 w-full max-w-md">
+            <div className="text-sm text-emerald-400 mb-1">{liveData?.opponentName || 'Opponent'}'s answer</div>
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-2xl font-bold text-white tabular-nums">
+                  {liveOppAnswer ?? '(none)'}
+                </span>
+                {liveOppDist !== null && (
+                  <span className="text-sm text-blue-300 ml-2">
+                    ({formatDist(liveOppAnswer!)})
+                  </span>
+                )}
+              </div>
+              <span className="text-2xl font-bold text-[#fbbf24]">+{liveOpponentResult.score}</span>
+            </div>
+            {liveOpponentResult.steps && liveOpponentResult.steps.length > 0 && (
+              <StepsWithHighlights steps={liveOpponentResult.steps} originalNumbers={round.numbers} target={round.target} />
+            )}
+          </div>
+        );
+      })()}
+
+      {/* Waiting for live opponent */}
+      {isLive && !liveOpponentResult && <WaitingOverlay />}
+
       {/* Optimal solution steps — hide if anyone got exact */}
       {!anyoneExact && (
         <SolutionSteps steps={round.solution} target={round.target} closest={closest} originalNumbers={round.numbers} />
@@ -149,6 +199,7 @@ export function NumbersReveal() {
         variant="primary"
         size="lg"
         onClick={() => dispatch({ type: 'NEXT_ROUND' })}
+        disabled={isLive && !liveOpponentResult}
       >
         {state.mode === 'freeplay' ? 'Play Again' : 'Next Round'}
       </Button>

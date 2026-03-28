@@ -1,11 +1,11 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useGame } from '../../hooks/useGame';
 import { LetterTile } from '../shared/LetterTile';
 import { Button } from '../shared/Button';
 import { createPool, drawConsonant, drawVowel, aiPickLetters, type LetterPool } from '../../engine/letterPicker';
-import { useRef } from 'react';
 import type { LettersRoundState, Difficulty } from '../../types/game';
 import { useChallengeOpponent } from '../../hooks/useChallengeOpponent';
+import { submitPicks } from '../../api/liveApi';
 
 const CONSONANTS = 'BCDFGHJKLMNPQRSTVWXYZ';
 
@@ -15,6 +15,11 @@ export function LettersPicking() {
   const poolRef = useRef<LetterPool>(createPool());
   const { hasOpponent, result: opponentResult } = useChallengeOpponent();
   const isChallengeReveal = hasOpponent && !!opponentResult?.letters?.length;
+
+  // Live mode P2: reveal letters from host's picks
+  const isLiveP2 = state.mode === 'live' && !state.liveData?.isHost;
+  const livePicks = state.liveData?.currentPicks;
+  const isLiveReveal = isLiveP2 && !!livePicks?.letters?.length;
 
   const canPickVowel = round.vowelCount < 5 && round.letters.length < 9;
   const canPickConsonant = round.consonantCount < 6 && round.letters.length < 9;
@@ -52,6 +57,32 @@ export function LettersPicking() {
     }
   }, [isChallengeReveal, round.letters.length, opponentResult, dispatch]);
 
+  // Live host: submit picks to server when all letters are picked
+  const picksSubmitted = useRef(false);
+  useEffect(() => {
+    if (state.mode === 'live' && state.liveData?.isHost && round.letters.length === 9 && !picksSubmitted.current) {
+      picksSubmitted.current = true;
+      submitPicks(state.liveData.code, state.liveData.playerId, {
+        roundIndex: state.currentRound,
+        roundType: 'letters',
+        letters: round.letters,
+      });
+    }
+  }, [state.mode, state.liveData, round.letters.length, round.letters, state.currentRound]);
+
+  // Live P2: auto-reveal host's letters one at a time
+  useEffect(() => {
+    if (isLiveReveal && round.letters.length < 9) {
+      const nextLetter = livePicks!.letters![round.letters.length];
+      if (!nextLetter) return;
+      const isConsonant = CONSONANTS.includes(nextLetter);
+      const timer = setTimeout(() => {
+        dispatch({ type: 'PICK_LETTER', letter: nextLetter, isConsonant });
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, [isLiveReveal, round.letters.length, livePicks, dispatch]);
+
   // AI auto-picks letters when it's the AI's turn
   useEffect(() => {
     if (!isChallengeReveal && !round.isPlayerPicking && round.letters.length < 9) {
@@ -68,11 +99,13 @@ export function LettersPicking() {
     }
   }, [isChallengeReveal, round.isPlayerPicking, round.letters.length, round.consonantCount, round.vowelCount, state.difficulty, pickLetter]);
 
-  const heading = isChallengeReveal
+  const heading = isChallengeReveal || isLiveReveal
     ? 'Revealing letters...'
-    : round.isPlayerPicking
-      ? 'Pick your letters'
-      : 'AI is picking letters...';
+    : isLiveP2 && !livePicks
+      ? 'Waiting for host to pick...'
+      : round.isPlayerPicking
+        ? 'Pick your letters'
+        : 'AI is picking letters...';
 
   return (
     <div className="flex flex-col items-center gap-6">

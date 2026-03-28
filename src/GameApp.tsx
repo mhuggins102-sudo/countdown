@@ -12,6 +12,8 @@ import { ChallengeResultScreen } from './components/screens/ChallengeResultScree
 import { BtcMenu } from './components/btc/BtcMenu';
 import { BtcScreen } from './components/btc/BtcScreen';
 import { BtcGameOverScreen } from './components/btc/BtcGameOverScreen';
+import { LiveMenu } from './components/screens/LiveMenu';
+import { useLivePolling } from './hooks/useLivePolling';
 
 // Round components
 import { LettersPicking } from './components/rounds/LettersPicking';
@@ -26,7 +28,7 @@ import { ConundrumReveal } from './components/rounds/ConundrumReveal';
 // Shared
 import { ScoreBar } from './components/shared/ScoreBar';
 
-type MenuScreen = 'main' | 'difficulty' | 'freeplay' | 'challenge' | 'btc';
+type MenuScreen = 'main' | 'difficulty' | 'freeplay' | 'challenge' | 'btc' | 'live';
 
 interface CompletedResultView {
   code: string;
@@ -42,13 +44,25 @@ export function GameApp() {
   const [timerDuration, setTimerDuration] = useState(TIMER_DURATION);
   const [completedResult, setCompletedResult] = useState<CompletedResultView | null>(null);
 
+  // Live multiplayer polling
+  useLivePolling();
+
   const checkedUrl = useRef(false);
 
-  // Handle ?challenge=CODE URL parameter
+  // Handle ?challenge=CODE and ?live=CODE URL parameters
   useEffect(() => {
     if (checkedUrl.current) return;
     checkedUrl.current = true;
     const params = new URLSearchParams(window.location.search);
+
+    // Handle ?live=CODE (reconnect or join)
+    const liveCode = params.get('live');
+    if (liveCode) {
+      window.history.replaceState({}, '', window.location.pathname);
+      setMenuScreen('live');
+      return;
+    }
+
     const code = params.get('challenge');
     if (!code) return;
     // Clear the URL param
@@ -109,6 +123,9 @@ export function GameApp() {
     if (menuScreen === 'btc') {
       return <BtcMenu onBack={goToMainMenu} />;
     }
+    if (menuScreen === 'live') {
+      return <LiveMenu onBack={goToMainMenu} timerDuration={timerDuration} />;
+    }
 
     // Main menu with custom handlers
     return (
@@ -144,12 +161,23 @@ export function GameApp() {
                 Play vs AI
               </button>
               <button
-                onClick={() => setMenuScreen('challenge')}
-                className="flex-1 bg-gradient-to-r from-[#8b5cf6] to-[#6d28d9] hover:from-[#a78bfa] hover:to-[#8b5cf6] text-white shadow-lg shadow-purple-500/25 font-semibold rounded-lg transition-all duration-200 active:scale-95 px-4 py-4 text-lg"
+                onClick={() => setMenuScreen('live')}
+                className="flex-1 bg-gradient-to-r from-[#10b981] to-[#059669] hover:from-[#34d399] hover:to-[#10b981] text-white shadow-lg shadow-emerald-500/25 font-semibold rounded-lg transition-all duration-200 active:scale-95 px-4 py-4 text-lg"
               >
-                Play vs Friend
+                Live Game
               </button>
             </div>
+          </div>
+
+          {/* Play vs Friend (async) */}
+          <div>
+            <button
+              onClick={() => setMenuScreen('challenge')}
+              className="w-full bg-gradient-to-r from-[#8b5cf6] to-[#6d28d9] hover:from-[#a78bfa] hover:to-[#8b5cf6] text-white shadow-lg shadow-purple-500/25 font-semibold rounded-lg transition-all duration-200 active:scale-95 px-4 py-3 text-base"
+            >
+              Async Challenge
+            </button>
+            <p className="text-blue-400/50 text-xs text-center mt-1">Play then send code to a friend</p>
           </div>
 
           {/* Practice Modes section */}
@@ -188,7 +216,7 @@ export function GameApp() {
   }
 
   // Playing screen
-  const isMultiRound = state.mode === 'fullgame' || state.mode === 'challenge';
+  const isMultiRound = state.mode === 'fullgame' || state.mode === 'challenge' || state.mode === 'live';
   const roundType = isMultiRound
     ? ROUND_ORDER[state.currentRound]
     : state.freeplayType;
@@ -196,17 +224,36 @@ export function GameApp() {
 
   return (
     <div className="min-h-screen p-4 max-w-2xl mx-auto">
-      {/* Score bar (full game + challenge) */}
+      {/* Score bar (full game + challenge + live) */}
       {isMultiRound && (
         <ScoreBar
           playerScore={state.playerTotalScore}
-          opponentScore={state.aiTotalScore}
+          opponentScore={state.mode === 'live' ? (state.liveData?.opponentTotalScore ?? 0) : state.aiTotalScore}
           currentRound={state.currentRound}
           totalRounds={totalRounds}
           roundType={roundType || ''}
           isChallenge={state.mode === 'challenge'}
-          opponentName={state.challengeData?.opponentName}
+          isLive={state.mode === 'live'}
+          opponentName={state.mode === 'live' ? state.liveData?.opponentName : state.challengeData?.opponentName}
+          opponentJoined={state.liveData?.opponentJoined}
         />
+      )}
+
+      {/* Live disconnect warning */}
+      {state.mode === 'live' && state.liveData?.opponentJoined && state.liveData.opponentLastSeen > 0 && (Date.now() - state.liveData.opponentLastSeen > 30000) && (
+        <div className="bg-red-500/20 border border-red-500/50 rounded-lg px-4 py-2 mb-4 text-center">
+          <span className="text-red-300 text-sm">Opponent may have disconnected</span>
+        </div>
+      )}
+
+      {/* Live: waiting for opponent to join (host in picking phase before opponent joins) */}
+      {state.mode === 'live' && state.liveData?.isHost && !state.liveData.opponentJoined && (
+        <div className="bg-blue-500/20 border border-blue-500/50 rounded-lg px-4 py-2 mb-4 text-center">
+          <div className="flex items-center justify-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+            <span className="text-blue-300 text-sm">Waiting for opponent to join — you can start picking!</span>
+          </div>
+        </div>
       )}
 
       {/* Free play header */}
