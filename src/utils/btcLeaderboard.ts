@@ -50,13 +50,13 @@ export function qualifiesForLeaderboard(mode: BtcMode, score: number): { daily: 
 }
 
 /** Save a new score. Returns updated leaderboard. */
-export function saveScore(mode: BtcMode, name: string, score: number): void {
+export function saveScore(mode: BtcMode, name: string, score: number, timestamp?: number): void {
   const all = getLeaderboard(mode);
   const entry: LeaderboardEntry = {
     name,
     score,
     date: todayStr(),
-    timestamp: Date.now(),
+    timestamp: timestamp || Date.now(),
   };
   all.push(entry);
   // Sort descending by score, then by timestamp (earlier is better for ties)

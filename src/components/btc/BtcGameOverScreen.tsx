@@ -17,6 +17,7 @@ export function BtcGameOverScreen({ onPlayAgain }: { onPlayAgain: () => void }) 
 
   const [name, setName] = useState('');
   const [saved, setSaved] = useState(false);
+  const [savedTimestamp, setSavedTimestamp] = useState<number | null>(null);
   const [tab, setTab] = useState<'daily' | 'alltime'>('daily');
 
   const qualifies = qualifiesForLeaderboard(mode, score);
@@ -24,8 +25,10 @@ export function BtcGameOverScreen({ onPlayAgain }: { onPlayAgain: () => void }) 
 
   const handleSave = () => {
     if (name.trim().length === 0) return;
-    saveScore(mode, name.trim(), score);
+    const ts = Date.now();
+    saveScore(mode, name.trim(), score, ts);
     setSaved(true);
+    setSavedTimestamp(ts);
   };
 
   const daily = getDailyLeaderboard(mode);
@@ -35,7 +38,7 @@ export function BtcGameOverScreen({ onPlayAgain }: { onPlayAgain: () => void }) 
   const modeLabel: Record<BtcMode, string> = {
     letters: 'Letters',
     numbers: 'Numbers',
-    all: 'All',
+    all: 'All Modes',
   };
 
   return (
@@ -93,11 +96,12 @@ export function BtcGameOverScreen({ onPlayAgain }: { onPlayAgain: () => void }) 
           </button>
         </div>
 
-        {entries.length === 0 ? (
-          <p className="text-blue-400 text-center text-sm py-4">No scores yet</p>
-        ) : (
-          <LeaderboardList entries={entries} currentScore={score} />
-        )}
+        <LeaderboardList
+          entries={entries}
+          currentScore={score}
+          saved={saved}
+          savedTimestamp={savedTimestamp}
+        />
       </div>
 
       <Button variant="gold" size="lg" onClick={onPlayAgain}>
@@ -107,36 +111,79 @@ export function BtcGameOverScreen({ onPlayAgain }: { onPlayAgain: () => void }) 
   );
 }
 
-function LeaderboardList({ entries, currentScore }: { entries: LeaderboardEntry[]; currentScore: number }) {
+function LeaderboardList({ entries, currentScore, saved, savedTimestamp }: {
+  entries: LeaderboardEntry[];
+  currentScore: number;
+  saved: boolean;
+  savedTimestamp: number | null;
+}) {
   const top5 = entries.slice(0, 5);
-  const isInTop5 = top5.some((e) => e.score <= currentScore && entries.indexOf(e) < 5);
 
-  // Find the rank of the current score (1-based)
-  // The current score's rank = number of entries with strictly higher score + 1
-  const currentRank = entries.filter((e) => e.score > currentScore).length + 1;
-  const showCurrentBelow = !isInTop5 && currentScore > 0;
+  if (saved && savedTimestamp) {
+    // After save: show top 5, highlight the saved entry by timestamp
+    const savedInTop5 = top5.some((e) => e.timestamp === savedTimestamp);
+
+    return (
+      <div className="space-y-1">
+        {top5.length === 0 ? (
+          <p className="text-blue-400 text-center text-sm py-4">No scores yet</p>
+        ) : (
+          top5.map((entry, i) => (
+            <LeaderboardRow
+              key={`${entry.timestamp}-${i}`}
+              rank={i + 1}
+              entry={entry}
+              highlight={entry.timestamp === savedTimestamp}
+            />
+          ))
+        )}
+        {!savedInTop5 && currentScore > 0 && (
+          <>
+            <div className="border-t border-[#2a4a7f]/50 my-1" />
+            {(() => {
+              const rank = entries.filter((e) => e.score > currentScore).length + 1;
+              const savedEntry = entries.find((e) => e.timestamp === savedTimestamp);
+              return (
+                <LeaderboardRow
+                  rank={rank}
+                  entry={savedEntry || { name: '???', score: currentScore, date: '', timestamp: 0 }}
+                  highlight
+                />
+              );
+            })()}
+          </>
+        )}
+      </div>
+    );
+  }
+
+  // Before save: show top 5 + "You" row at projected rank
+  const rank = entries.filter((e) => e.score > currentScore).length + 1;
+  const inTop5 = rank <= 5 && entries.length < 5;
 
   return (
     <div className="space-y-1">
-      {top5.map((entry, i) => {
-        const isCurrentScore = entry.score === currentScore && i + 1 === currentRank;
-        return (
-          <LeaderboardRow
-            key={`${entry.timestamp}-${i}`}
-            rank={i + 1}
-            entry={entry}
-            highlight={isCurrentScore}
-          />
-        );
-      })}
-      {showCurrentBelow && (
+      {top5.length === 0 && currentScore === 0 ? (
+        <p className="text-blue-400 text-center text-sm py-4">No scores yet</p>
+      ) : (
         <>
-          <div className="border-t border-[#2a4a7f]/50 my-1" />
-          <LeaderboardRow
-            rank={currentRank}
-            entry={{ name: 'You', score: currentScore, date: '', timestamp: 0 }}
-            highlight
-          />
+          {top5.map((entry, i) => (
+            <LeaderboardRow
+              key={`${entry.timestamp}-${i}`}
+              rank={i + 1}
+              entry={entry}
+            />
+          ))}
+          {!inTop5 && currentScore > 0 && (
+            <>
+              <div className="border-t border-[#2a4a7f]/50 my-1" />
+              <LeaderboardRow
+                rank={rank}
+                entry={{ name: 'You', score: currentScore, date: '', timestamp: 0 }}
+                highlight
+              />
+            </>
+          )}
         </>
       )}
     </div>
