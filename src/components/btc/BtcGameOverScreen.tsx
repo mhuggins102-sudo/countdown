@@ -96,11 +96,7 @@ export function BtcGameOverScreen({ onPlayAgain }: { onPlayAgain: () => void }) 
         {entries.length === 0 ? (
           <p className="text-blue-400 text-center text-sm py-4">No scores yet</p>
         ) : (
-          <div className="space-y-1">
-            {entries.slice(0, 10).map((entry, i) => (
-              <LeaderboardRow key={`${entry.timestamp}-${i}`} rank={i + 1} entry={entry} />
-            ))}
-          </div>
+          <LeaderboardList entries={entries} currentScore={score} />
         )}
       </div>
 
@@ -111,7 +107,43 @@ export function BtcGameOverScreen({ onPlayAgain }: { onPlayAgain: () => void }) 
   );
 }
 
-function LeaderboardRow({ rank, entry }: { rank: number; entry: LeaderboardEntry }) {
+function LeaderboardList({ entries, currentScore }: { entries: LeaderboardEntry[]; currentScore: number }) {
+  const top5 = entries.slice(0, 5);
+  const isInTop5 = top5.some((e) => e.score <= currentScore && entries.indexOf(e) < 5);
+
+  // Find the rank of the current score (1-based)
+  // The current score's rank = number of entries with strictly higher score + 1
+  const currentRank = entries.filter((e) => e.score > currentScore).length + 1;
+  const showCurrentBelow = !isInTop5 && currentScore > 0;
+
+  return (
+    <div className="space-y-1">
+      {top5.map((entry, i) => {
+        const isCurrentScore = entry.score === currentScore && i + 1 === currentRank;
+        return (
+          <LeaderboardRow
+            key={`${entry.timestamp}-${i}`}
+            rank={i + 1}
+            entry={entry}
+            highlight={isCurrentScore}
+          />
+        );
+      })}
+      {showCurrentBelow && (
+        <>
+          <div className="border-t border-[#2a4a7f]/50 my-1" />
+          <LeaderboardRow
+            rank={currentRank}
+            entry={{ name: 'You', score: currentScore, date: '', timestamp: 0 }}
+            highlight
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
+function LeaderboardRow({ rank, entry, highlight }: { rank: number; entry: LeaderboardEntry; highlight?: boolean }) {
   const medalColors: Record<number, string> = {
     1: 'text-[#fbbf24]',
     2: 'text-gray-300',
@@ -119,7 +151,9 @@ function LeaderboardRow({ rank, entry }: { rank: number; entry: LeaderboardEntry
   };
 
   return (
-    <div className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-[#0a1628]/50">
+    <div className={`flex items-center justify-between py-1.5 px-2 rounded ${
+      highlight ? 'bg-[#3b82f6]/20 ring-1 ring-[#3b82f6]/50' : 'hover:bg-[#0a1628]/50'
+    }`}>
       <div className="flex items-center gap-3">
         <span className={`w-6 text-center font-bold text-sm ${medalColors[rank] || 'text-blue-400'}`}>
           {rank}

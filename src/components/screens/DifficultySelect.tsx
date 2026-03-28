@@ -13,7 +13,7 @@ export function DifficultySelect({ onBack, timerDuration }: { onBack: () => void
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen gap-8 px-4">
-      <h1 className="text-4xl font-bold text-white">Full Game vs AI</h1>
+      <h1 className="text-4xl font-bold text-white">AI Difficulty</h1>
       <p className="text-blue-300">How strong should your AI opponent be?</p>
 
       <div className="flex flex-col gap-4 w-full max-w-sm">

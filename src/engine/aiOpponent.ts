@@ -54,9 +54,9 @@ export function aiPickNumber(
 
   let maxOffset: number;
   switch (difficulty) {
-    case 'easy':    maxOffset = 30; break; // ~6.6% exact
-    case 'medium':  maxOffset = 20; break; // ~9.8% exact
-    case 'hard':    maxOffset = 10; break; // ~19% exact
+    case 'easy':    maxOffset = 25; break;
+    case 'medium':  maxOffset = 15; break;
+    case 'hard':    maxOffset = 8;  break;
   }
 
   const offset = weightedOffset(maxOffset);

@@ -57,9 +57,6 @@ export function BtcConundrumPlaying() {
     <div className="flex flex-col items-center gap-5">
       <div className="bg-[#1a2d50] rounded-xl px-6 py-2 text-center">
         <span className="text-sm text-purple-400 font-semibold">Conundrum</span>
-        {hintsRevealed > 1 && conundrumBonus < CONUNDRUM_BTC_BONUS && (
-          <div className="text-xs text-purple-300/70 mt-0.5">Solve now: +{conundrumBonus}s</div>
-        )}
       </div>
 
       {/* Scrambled letter tiles */}
