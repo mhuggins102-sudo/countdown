@@ -71,8 +71,8 @@ export function LiveMenu({ onBack, timerDuration }: { onBack: () => void; timerD
           });
         }
       }, 2000);
-    } catch {
-      setError('Could not create room. Try again.');
+    } catch (err) {
+      setError(`Could not create room: ${err instanceof Error ? err.message : String(err)}`);
       setLoading(false);
     }
   };

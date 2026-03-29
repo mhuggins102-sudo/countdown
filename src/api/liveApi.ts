@@ -14,6 +14,10 @@ export async function createLiveRoom(data: {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Server ${res.status}: ${text}`);
+  }
   return res.json();
 }
 
