@@ -733,6 +733,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       if (!state.currentRoundState) return state;
       // Replace the placeholder 0-score with real head-to-head scores
       const prevPlayerScore = state.currentRoundState.playerScore;
+      const prevOppScore = state.currentRoundState.aiScore;
       const updatedRound = {
         ...state.currentRoundState,
         playerScore: action.playerScore,
@@ -748,6 +749,11 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         playerTotalScore: state.playerTotalScore - prevPlayerScore + action.playerScore,
         currentRoundState: updatedRound,
         rounds: updatedRounds,
+        // Also update liveData opponent total (server total is always 0 since scores are deferred)
+        liveData: state.liveData ? {
+          ...state.liveData,
+          opponentTotalScore: state.liveData.opponentTotalScore - prevOppScore + action.opponentScore,
+        } : null,
       };
     }
 
