@@ -273,21 +273,9 @@ async function handleLive(request: Request, url: URL, env: Env): Promise<Respons
 
     const record: LiveRoomRecord = JSON.parse(data);
 
-    // Write heartbeat to a SEPARATE KV key so we never touch the main record
-    // (avoids race condition where heartbeat writes overwrite concurrent submits)
-    const playerId = url.searchParams.get('playerId');
-    if (playerId && (playerId === record.p1Id || playerId === record.p2Id)) {
-      const hbKey = playerId === record.p1Id ? `live:${code}:hb:p1` : `live:${code}:hb:p2`;
-      await env.CHALLENGES.put(hbKey, String(Date.now()), { expirationTtl: LIVE_TTL });
-    }
-
-    // Read heartbeats from separate keys and merge into response
-    const [p1Hb, p2Hb] = await Promise.all([
-      env.CHALLENGES.get(`live:${code}:hb:p1`),
-      env.CHALLENGES.get(`live:${code}:hb:p2`),
-    ]);
-    if (p1Hb) record.p1LastSeen = Number(p1Hb);
-    if (p2Hb) record.p2LastSeen = Number(p2Hb);
+    // No KV writes for heartbeats — they burn through the free tier quota too fast.
+    // Disconnect detection relies on lastSeen timestamps updated by submit/picks/join
+    // actions instead, which are infrequent enough to stay within limits.
 
     return json(record);
   }
@@ -308,6 +296,10 @@ async function handleLive(request: Request, url: URL, env: Env): Promise<Respons
     if (body.playerId !== record.p1Id && body.playerId !== record.p2Id) {
       return json({ error: 'Unknown player' }, 403);
     }
+
+    // Update lastSeen (since heartbeat writes were removed to save KV quota)
+    if (body.playerId === record.p1Id) record.p1LastSeen = Date.now();
+    else record.p2LastSeen = Date.now();
 
     // Add or replace picks for this round
     const existing = record.picks.findIndex((p) => p.roundIndex === body.picks.roundIndex);
@@ -358,12 +350,14 @@ async function handleLive(request: Request, url: URL, env: Env): Promise<Respons
       fresh.p1TotalScore = fresh.p1Results
         .filter((r): r is LiveRoundSubmission => r !== null)
         .reduce((sum, r) => sum + r.score, 0);
+      fresh.p1LastSeen = Date.now();
     } else {
       while (fresh.p2Results.length <= roundIdx) fresh.p2Results.push(null);
       fresh.p2Results[roundIdx] = body.result;
       fresh.p2TotalScore = fresh.p2Results
         .filter((r): r is LiveRoundSubmission => r !== null)
         .reduce((sum, r) => sum + r.score, 0);
+      fresh.p2LastSeen = Date.now();
     }
 
     // Check if both players submitted for this round
