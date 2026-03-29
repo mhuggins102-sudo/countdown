@@ -269,25 +269,21 @@ async function handleLive(request: Request, url: URL, env: Env): Promise<Respons
 
     const record: LiveRoomRecord = JSON.parse(data);
 
-    // Update heartbeat — re-read KV before writing to avoid overwriting
-    // concurrent submit/picks changes
+    // Write heartbeat to a SEPARATE KV key so we never touch the main record
+    // (avoids race condition where heartbeat writes overwrite concurrent submits)
     const playerId = url.searchParams.get('playerId');
     if (playerId && (playerId === record.p1Id || playerId === record.p2Id)) {
-      const freshHb = await env.CHALLENGES.get(`live:${code}`);
-      if (freshHb) {
-        const freshRecord: LiveRoomRecord = JSON.parse(freshHb);
-        if (playerId === freshRecord.p1Id) {
-          freshRecord.p1LastSeen = Date.now();
-        } else {
-          freshRecord.p2LastSeen = Date.now();
-        }
-        await env.CHALLENGES.put(
-          `live:${code}`,
-          JSON.stringify(freshRecord),
-          { expirationTtl: LIVE_TTL },
-        );
-      }
+      const hbKey = playerId === record.p1Id ? `live:${code}:hb:p1` : `live:${code}:hb:p2`;
+      await env.CHALLENGES.put(hbKey, String(Date.now()), { expirationTtl: LIVE_TTL });
     }
+
+    // Read heartbeats from separate keys and merge into response
+    const [p1Hb, p2Hb] = await Promise.all([
+      env.CHALLENGES.get(`live:${code}:hb:p1`),
+      env.CHALLENGES.get(`live:${code}:hb:p2`),
+    ]);
+    if (p1Hb) record.p1LastSeen = Number(p1Hb);
+    if (p2Hb) record.p2LastSeen = Number(p2Hb);
 
     return json(record);
   }
