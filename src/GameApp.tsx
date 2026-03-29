@@ -239,12 +239,6 @@ export function GameApp() {
         />
       )}
 
-      {/* Live disconnect warning */}
-      {state.mode === 'live' && state.liveData?.opponentJoined && state.liveData.opponentLastSeen > 0 && (Date.now() - state.liveData.opponentLastSeen > 30000) && (
-        <div className="bg-red-500/20 border border-red-500/50 rounded-lg px-4 py-2 mb-4 text-center">
-          <span className="text-red-300 text-sm">Opponent may have disconnected</span>
-        </div>
-      )}
 
       {/* Live: waiting for opponent to join (host in picking phase before opponent joins) */}
       {state.mode === 'live' && state.liveData?.isHost && !state.liveData.opponentJoined && (
