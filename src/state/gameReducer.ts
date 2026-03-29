@@ -702,7 +702,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         liveData: {
           ...state.liveData,
           opponentResult: action.result,
-          opponentTotalScore: action.opponentTotalScore,
+          // Don't overwrite opponentTotalScore from server — server totals are
+          // always 0 because scores are deferred. Only LIVE_RESCORE_ROUND updates it.
         },
       };
     }
