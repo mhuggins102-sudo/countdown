@@ -269,21 +269,21 @@ async function handleLive(request: Request, url: URL, env: Env): Promise<Respons
 
     const record: LiveRoomRecord = JSON.parse(data);
 
-    // Update heartbeat
+    // Update heartbeat — re-read KV before writing to avoid overwriting
+    // concurrent submit/picks changes
     const playerId = url.searchParams.get('playerId');
-    if (playerId) {
-      let updated = false;
-      if (playerId === record.p1Id) {
-        record.p1LastSeen = Date.now();
-        updated = true;
-      } else if (playerId === record.p2Id) {
-        record.p2LastSeen = Date.now();
-        updated = true;
-      }
-      if (updated) {
+    if (playerId && (playerId === record.p1Id || playerId === record.p2Id)) {
+      const freshHb = await env.CHALLENGES.get(`live:${code}`);
+      if (freshHb) {
+        const freshRecord: LiveRoomRecord = JSON.parse(freshHb);
+        if (playerId === freshRecord.p1Id) {
+          freshRecord.p1LastSeen = Date.now();
+        } else {
+          freshRecord.p2LastSeen = Date.now();
+        }
         await env.CHALLENGES.put(
           `live:${code}`,
-          JSON.stringify(record),
+          JSON.stringify(freshRecord),
           { expirationTtl: LIVE_TTL },
         );
       }
@@ -340,42 +340,49 @@ async function handleLive(request: Request, url: URL, env: Env): Promise<Respons
     };
 
     const roundIdx = body.result.roundIndex;
+    const isP1 = body.playerId === record.p1Id;
+    const isP2 = body.playerId === record.p2Id;
 
-    if (body.playerId === record.p1Id) {
-      // Ensure array is big enough
-      while (record.p1Results.length <= roundIdx) record.p1Results.push(null);
-      record.p1Results[roundIdx] = body.result;
-      record.p1TotalScore = record.p1Results
-        .filter((r): r is LiveRoundSubmission => r !== null)
-        .reduce((sum, r) => sum + r.score, 0);
-    } else if (body.playerId === record.p2Id) {
-      while (record.p2Results.length <= roundIdx) record.p2Results.push(null);
-      record.p2Results[roundIdx] = body.result;
-      record.p2TotalScore = record.p2Results
-        .filter((r): r is LiveRoundSubmission => r !== null)
-        .reduce((sum, r) => sum + r.score, 0);
-    } else {
+    if (!isP1 && !isP2) {
       return json({ error: 'Unknown player' }, 403);
     }
 
+    // Re-read KV right before writing to avoid race condition where
+    // both players submit concurrently and the second write overwrites the first
+    const freshData = await env.CHALLENGES.get(`live:${code}`);
+    const fresh: LiveRoomRecord = freshData ? JSON.parse(freshData) : record;
+
+    if (isP1) {
+      while (fresh.p1Results.length <= roundIdx) fresh.p1Results.push(null);
+      fresh.p1Results[roundIdx] = body.result;
+      fresh.p1TotalScore = fresh.p1Results
+        .filter((r): r is LiveRoundSubmission => r !== null)
+        .reduce((sum, r) => sum + r.score, 0);
+    } else {
+      while (fresh.p2Results.length <= roundIdx) fresh.p2Results.push(null);
+      fresh.p2Results[roundIdx] = body.result;
+      fresh.p2TotalScore = fresh.p2Results
+        .filter((r): r is LiveRoundSubmission => r !== null)
+        .reduce((sum, r) => sum + r.score, 0);
+    }
+
     // Check if both players submitted for this round
-    const bothSubmitted = record.p1Results[roundIdx] !== null
-      && record.p1Results[roundIdx] !== undefined
-      && record.p2Results[roundIdx] !== null
-      && record.p2Results[roundIdx] !== undefined;
+    const bothSubmitted = fresh.p1Results[roundIdx] !== null
+      && fresh.p1Results[roundIdx] !== undefined
+      && fresh.p2Results[roundIdx] !== null
+      && fresh.p2Results[roundIdx] !== undefined;
 
     // Advance round if both submitted
     if (bothSubmitted) {
-      record.currentRound = roundIdx + 1;
-      // Check if game is over (15 rounds)
-      if (record.currentRound >= 15) {
-        record.status = 'finished';
+      fresh.currentRound = roundIdx + 1;
+      if (fresh.currentRound >= 15) {
+        fresh.status = 'finished';
       }
     }
 
     await env.CHALLENGES.put(
       `live:${code}`,
-      JSON.stringify(record),
+      JSON.stringify(fresh),
       { expirationTtl: LIVE_TTL },
     );
 
