@@ -1,10 +1,11 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useGame } from '../../hooks/useGame';
 import { useTimer } from '../../hooks/useTimer';
 import { LetterTile } from '../shared/LetterTile';
 import { Timer } from '../shared/Timer';
 import { Button } from '../shared/Button';
 import { isValidWord, canFormWord } from '../../engine/wordValidator';
+import { submitPicks } from '../../api/liveApi';
 import type { LettersRoundState } from '../../types/game';
 
 export function LettersPlaying() {
@@ -13,6 +14,19 @@ export function LettersPlaying() {
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [submitted, setSubmitted] = useState(false);
   const [shake, setShake] = useState(false);
+
+  // Live host: submit picks to server on mount (picking just completed)
+  const picksSubmitted = useRef(false);
+  useEffect(() => {
+    if (state.mode === 'live' && state.liveData?.isHost && !picksSubmitted.current) {
+      picksSubmitted.current = true;
+      submitPicks(state.liveData.code, state.liveData.playerId, {
+        roundIndex: state.currentRound,
+        roundType: 'letters',
+        letters: round.letters,
+      });
+    }
+  }, [state.mode, state.liveData, state.currentRound, round.letters]);
 
   const currentWord = selectedIndices.map((i) => round.letters[i]).join('');
   const wordValid = currentWord.length > 0

@@ -5,7 +5,6 @@ import { Button } from '../shared/Button';
 import { createNumberPool, drawLargeNumber, drawSmallNumber, aiPickNumberType, type NumberPool } from '../../engine/letterPicker';
 import type { NumbersRoundState, Difficulty } from '../../types/game';
 import { useChallengeOpponent } from '../../hooks/useChallengeOpponent';
-import { submitPicks } from '../../api/liveApi';
 
 const LARGE_NUMS = [25, 50, 75, 100];
 
@@ -49,20 +48,6 @@ export function NumbersPicking() {
       return () => clearTimeout(timer);
     }
   }, [isChallengeReveal, round.numbers.length, opponentResult, dispatch]);
-
-  // Live host: submit picks to server when all numbers are picked
-  const picksSubmitted = useRef(false);
-  useEffect(() => {
-    if (state.mode === 'live' && state.liveData?.isHost && round.numbers.length === 6 && !picksSubmitted.current) {
-      picksSubmitted.current = true;
-      submitPicks(state.liveData.code, state.liveData.playerId, {
-        roundIndex: state.currentRound,
-        roundType: 'numbers',
-        numbers: round.numbers,
-        target: round.target,
-      });
-    }
-  }, [state.mode, state.liveData, round.numbers.length, round.numbers, round.target, state.currentRound]);
 
   // Live P2: auto-reveal host's numbers one at a time
   useEffect(() => {

@@ -1,8 +1,9 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useGame } from '../../hooks/useGame';
 import { useTimer } from '../../hooks/useTimer';
 import { Timer } from '../shared/Timer';
 import { Button } from '../shared/Button';
+import { submitPicks } from '../../api/liveApi';
 import type { NumbersRoundState, SolutionStep } from '../../types/game';
 
 type Op = '+' | '-' | '*' | '/';
@@ -25,6 +26,20 @@ export function NumbersPlaying() {
   const { state, dispatch } = useGame();
   const round = state.currentRoundState as NumbersRoundState;
   const [submitted, setSubmitted] = useState(false);
+
+  // Live host: submit picks to server on mount (picking just completed)
+  const picksSubmitted = useRef(false);
+  useEffect(() => {
+    if (state.mode === 'live' && state.liveData?.isHost && !picksSubmitted.current) {
+      picksSubmitted.current = true;
+      submitPicks(state.liveData.code, state.liveData.playerId, {
+        roundIndex: state.currentRound,
+        roundType: 'numbers',
+        numbers: round.numbers,
+        target: round.target,
+      });
+    }
+  }, [state.mode, state.liveData, state.currentRound, round.numbers, round.target]);
 
   const [tiles, setTiles] = useState<Tile[]>(() =>
     round.numbers.map((n) => ({ value: n, isResult: false, isLarge: n >= 25 }))

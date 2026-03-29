@@ -5,7 +5,6 @@ import { Button } from '../shared/Button';
 import { createPool, drawConsonant, drawVowel, aiPickLetters, type LetterPool } from '../../engine/letterPicker';
 import type { LettersRoundState, Difficulty } from '../../types/game';
 import { useChallengeOpponent } from '../../hooks/useChallengeOpponent';
-import { submitPicks } from '../../api/liveApi';
 
 const CONSONANTS = 'BCDFGHJKLMNPQRSTVWXYZ';
 
@@ -56,19 +55,6 @@ export function LettersPicking() {
       return () => clearTimeout(timer);
     }
   }, [isChallengeReveal, round.letters.length, opponentResult, dispatch]);
-
-  // Live host: submit picks to server when all letters are picked
-  const picksSubmitted = useRef(false);
-  useEffect(() => {
-    if (state.mode === 'live' && state.liveData?.isHost && round.letters.length === 9 && !picksSubmitted.current) {
-      picksSubmitted.current = true;
-      submitPicks(state.liveData.code, state.liveData.playerId, {
-        roundIndex: state.currentRound,
-        roundType: 'letters',
-        letters: round.letters,
-      });
-    }
-  }, [state.mode, state.liveData, round.letters.length, round.letters, state.currentRound]);
 
   // Live P2: auto-reveal host's letters one at a time
   useEffect(() => {
