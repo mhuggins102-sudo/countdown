@@ -154,7 +154,7 @@ export function LettersReveal() {
                     {oppValid ? 'Valid' : 'Invalid'}
                   </span>
                 )}
-                <span className="text-2xl font-bold text-[#fbbf24]">+{liveOpponentResult.score}</span>
+                <span className="text-2xl font-bold text-[#fbbf24]">+{round.aiScore}</span>
               </div>
             </div>
           </div>

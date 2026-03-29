@@ -196,7 +196,7 @@ export function NumbersReveal() {
                   </span>
                 )}
               </div>
-              <span className="text-2xl font-bold text-[#fbbf24]">+{liveOpponentResult.score}</span>
+              <span className="text-2xl font-bold text-[#fbbf24]">+{round.aiScore}</span>
             </div>
             {liveOpponentResult.steps && liveOpponentResult.steps.length > 0 && (
               <StepsWithHighlights steps={liveOpponentResult.steps} originalNumbers={round.numbers} target={round.target} />
