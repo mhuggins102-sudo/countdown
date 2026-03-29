@@ -97,7 +97,11 @@ export default {
 
     // Handle /api/live routes
     if (url.pathname.startsWith('/api/live')) {
-      return handleLive(request, url, env);
+      try {
+        return await handleLive(request, url, env);
+      } catch (err) {
+        return json({ error: 'Worker exception', detail: err instanceof Error ? err.message : String(err) }, 500);
+      }
     }
 
     // Only handle /api/challenge routes
