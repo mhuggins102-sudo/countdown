@@ -1,6 +1,6 @@
-import type { Difficulty } from '../types/game';
+import type { Difficulty, SolutionStep } from '../types/game';
 import { findAllValidWords } from './wordFinder';
-import { solveNumbers } from './numbersSolver';
+import { solveNumbers, solveForTarget } from './numbersSolver';
 
 export function aiPickWord(
   letters: string[],
@@ -13,28 +13,40 @@ export function aiPickWord(
 
   switch (difficulty) {
     case 'easy': {
-      // Pick a word 3-5 letters long, or the best if nothing shorter exists
-      const shortWords = validWords.filter((w) => w.length >= 3 && w.length <= 5);
-      if (shortWords.length > 0) {
-        return shortWords[Math.floor(Math.random() * Math.min(5, shortWords.length))];
-      }
-      return validWords[validWords.length - 1]; // shortest available
+      // 5% chance of longest word; otherwise 50% three shorter, 30% two shorter, 20% one shorter
+      if (Math.random() < 0.05) return validWords[0];
+      const r = Math.random();
+      const delta = r < 0.5 ? 3 : r < 0.8 ? 2 : 1;
+      const targetLen = Math.max(3, longest - delta);
+      const candidates = validWords.filter((w) => w.length === targetLen);
+      if (candidates.length > 0) return candidates[Math.floor(Math.random() * candidates.length)];
+      // Fall back to closest available shorter word
+      const shorter = validWords.filter((w) => w.length <= targetLen);
+      if (shorter.length > 0) return shorter[0];
+      return validWords[validWords.length - 1];
     }
     case 'medium': {
-      // Pick a word 1-2 letters shorter than the best, or the best 40% of the time
-      if (Math.random() < 0.4) return validWords[0];
-      const targetLen = Math.max(3, longest - Math.floor(Math.random() * 2) - 1);
-      const candidates = validWords.filter((w) => w.length >= targetLen - 1 && w.length <= targetLen);
-      if (candidates.length > 0) {
-        return candidates[Math.floor(Math.random() * Math.min(3, candidates.length))];
-      }
+      // 20% chance of longest word; otherwise 30% L-1, 50% L-2, 20% L-3
+      if (Math.random() < 0.2) return validWords[0];
+      const r = Math.random();
+      const delta = r < 0.3 ? 1 : r < 0.8 ? 2 : 3;
+      const targetLen = Math.max(3, longest - delta);
+      const candidates = validWords.filter((w) => w.length === targetLen);
+      if (candidates.length > 0) return candidates[Math.floor(Math.random() * candidates.length)];
+      const shorter = validWords.filter((w) => w.length <= targetLen);
+      if (shorter.length > 0) return shorter[0];
       return validWords[Math.min(2, validWords.length - 1)];
     }
     case 'hard': {
-      // Pick the best word 70% of the time, second-best 30%
-      if (Math.random() < 0.7 || validWords.length === 1) return validWords[0];
-      const secondBest = validWords.find((w) => w.length === longest - 1) || validWords[1];
-      return secondBest;
+      // 50% chance of longest word; otherwise 75% one shorter, 25% two shorter
+      if (Math.random() < 0.5 || validWords.length === 1) return validWords[0];
+      const delta = Math.random() < 0.75 ? 1 : 2;
+      const targetLen = Math.max(3, longest - delta);
+      const candidates = validWords.filter((w) => w.length === targetLen);
+      if (candidates.length > 0) return candidates[Math.floor(Math.random() * candidates.length)];
+      const shorter = validWords.filter((w) => w.length <= targetLen);
+      if (shorter.length > 0) return shorter[0];
+      return validWords[0]; // fall back to best
     }
   }
 }
@@ -49,20 +61,37 @@ export function aiPickNumber(
   numbers: number[],
   target: number,
   difficulty: Difficulty,
-): number {
-  const { closest } = solveNumbers(numbers, target);
+): { answer: number; steps: SolutionStep[] } {
+  const { closest, steps: bestSteps } = solveNumbers(numbers, target);
 
   let maxOffset: number;
   switch (difficulty) {
-    case 'easy':    maxOffset = 30; break; // ~6.6% exact
-    case 'medium':  maxOffset = 20; break; // ~9.8% exact
-    case 'hard':    maxOffset = 10; break; // ~19% exact
+    case 'easy':    maxOffset = 25; break;
+    case 'medium':  maxOffset = 15; break;
+    case 'hard':    maxOffset = 8;  break;
   }
 
   const offset = weightedOffset(maxOffset);
-  if (offset === 0) return closest;
-  const result = closest + (Math.random() < 0.5 ? offset : -offset);
-  return Math.max(1, result);
+  if (offset === 0) return { answer: closest, steps: bestSteps };
+
+  // Try to find steps that produce the intended offset answer
+  const sign = Math.random() < 0.5 ? 1 : -1;
+  const intendedAnswer = Math.max(1, closest + sign * offset);
+  const result = solveForTarget(numbers, intendedAnswer);
+  if (result.distance === 0) {
+    return { answer: result.value, steps: result.steps };
+  }
+
+  // If we can't hit the intended answer exactly, try the other direction
+  const altAnswer = Math.max(1, closest - sign * offset);
+  const altResult = solveForTarget(numbers, altAnswer);
+  if (altResult.distance === 0) {
+    return { answer: altResult.value, steps: altResult.steps };
+  }
+
+  // Use whichever got closer to its intended target, expanding outward if needed
+  const best = result.distance <= altResult.distance ? result : altResult;
+  return { answer: best.value, steps: best.steps };
 }
 
 export function aiSolveConundrum(
@@ -93,6 +122,7 @@ export function aiSolveConundrum(
   }
 
   const solved = Math.random() < solveChance;
+  if (!solved) return { solved: false, guessTime: 0 };
   // Weighted toward minTime using floor-based sqrt distribution
   const guessTime = minTime + Math.floor((maxTime - minTime) * (1 - Math.sqrt(Math.random())));
 

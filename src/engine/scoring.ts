@@ -80,13 +80,23 @@ export interface ConundrumScore {
   aiScore: number;
 }
 
+/** Check if a conundrum guess is correct: must be a valid 9-letter word using exactly the scrambled letters */
+export function isConundrumCorrect(guess: string, answer: string): boolean {
+  if (guess.length === 0) return false;
+  // Exact match is always correct (handles case where dictionary isn't loaded)
+  if (guess.toUpperCase() === answer.toUpperCase()) return true;
+  // Otherwise: must be a valid dictionary word that can be formed from the answer's letters
+  if (guess.length !== 9) return false;
+  return isValidWord(guess) && canFormWord(guess, answer.split(''));
+}
+
 export function scoreConundrumRound(
   playerGuess: string,
   aiSolved: boolean,
   answer: string,
   playerSubmittedFirst: boolean,
 ): ConundrumScore {
-  const playerCorrect = playerGuess.toUpperCase() === answer.toUpperCase();
+  const playerCorrect = isConundrumCorrect(playerGuess, answer);
 
   if (playerCorrect && playerSubmittedFirst) {
     return { playerScore: 10, aiScore: 0 };

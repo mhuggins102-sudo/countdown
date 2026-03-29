@@ -1,8 +1,9 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useGame } from '../../hooks/useGame';
 import { useTimer } from '../../hooks/useTimer';
 import { Timer } from '../shared/Timer';
 import { Button } from '../shared/Button';
+import { submitPicks } from '../../api/liveApi';
 import type { NumbersRoundState, SolutionStep } from '../../types/game';
 
 type Op = '+' | '-' | '*' | '/';
@@ -26,6 +27,22 @@ export function NumbersPlaying() {
   const round = state.currentRoundState as NumbersRoundState;
   const [submitted, setSubmitted] = useState(false);
 
+  // Live picker: submit picks to server on mount (picking just completed)
+  const isLivePicker = state.mode === 'live' && state.liveData &&
+    (state.liveData.isHost ? (state.currentRound % 2 === 0) : (state.currentRound % 2 === 1));
+  const picksSubmitted = useRef(false);
+  useEffect(() => {
+    if (isLivePicker && state.liveData && !picksSubmitted.current) {
+      picksSubmitted.current = true;
+      submitPicks(state.liveData.code, state.liveData.playerId, {
+        roundIndex: state.currentRound,
+        roundType: 'numbers',
+        numbers: round.numbers,
+        target: round.target,
+      });
+    }
+  }, [isLivePicker, state.liveData, state.currentRound, round.numbers, round.target]);
+
   const [tiles, setTiles] = useState<Tile[]>(() =>
     round.numbers.map((n) => ({ value: n, isResult: false, isLarge: n >= 25 }))
   );
@@ -36,19 +53,19 @@ export function NumbersPlaying() {
 
   const lastStep = steps.length > 0 ? steps[steps.length - 1] : null;
   const currentAnswer = lastStep ? lastStep.result : null;
-  const allUsed = tiles.length <= 1;
 
-  const doSubmit = useCallback((timerExpired: boolean) => {
+  const doSubmit = useCallback((_timerExpired: boolean) => {
     if (submitted) return;
     setSubmitted(true);
-    const answer = timerExpired && !allUsed ? -9999 : (currentAnswer ?? -9999);
-    const submittedSteps = timerExpired && !allUsed ? [] : steps;
+    // On timer expiry, submit best available: last calculation result, or no answer
+    const answer = currentAnswer ?? -9999;
+    const submittedSteps = currentAnswer !== null ? steps : [];
     dispatch({
       type: 'SUBMIT_NUMBERS_ANSWER',
       answer,
       steps: submittedSteps,
     });
-  }, [submitted, allUsed, currentAnswer, steps, dispatch]);
+  }, [submitted, currentAnswer, steps, dispatch]);
 
   useEffect(() => {
     if (submitted && state.phase === 'playing') {
@@ -216,6 +233,7 @@ export function NumbersPlaying() {
             variant="gold"
             size="lg"
             onClick={() => doSubmit(false)}
+            disabled={currentAnswer === null}
           >
             Submit
           </Button>

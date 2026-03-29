@@ -1,45 +1,123 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useGame } from '../../hooks/useGame';
 import { Button } from '../shared/Button';
-import { scoreConundrumRound } from '../../engine/scoring';
+import { WaitingOverlay } from '../shared/WaitingOverlay';
+import { scoreConundrumRound, isConundrumCorrect } from '../../engine/scoring';
 import type { ConundrumRoundState } from '../../types/game';
+import { useChallengeOpponent } from '../../hooks/useChallengeOpponent';
+import { submitLiveResult } from '../../api/liveApi';
 
 export function ConundrumReveal() {
   const { state, dispatch } = useGame();
   const round = state.currentRoundState as ConundrumRoundState;
   const [revealed, setRevealed] = useState(false);
+  const { isP1, hasOpponent, opponentName, result: opponentResult } = useChallengeOpponent();
+  const liveSubmitted = useRef(false);
+
+  const isLive = state.mode === 'live';
+  const liveData = state.liveData;
+  const liveOpponentResult = liveData?.opponentResult;
 
   useEffect(() => {
     if (revealed) return;
     setRevealed(true);
 
-    // Use the AI result stored in the round state (set during ConundrumPlaying)
-    const playerElapsed = state.timerDuration - round.playerTimeRemaining;
-    const playerSubmittedFirst = round.playerGuess.length > 0 && (!round.aiSolved || playerElapsed < round.aiGuessTime);
+    let playerScore = 0;
+    let aiScore = 0;
 
-    const scores = scoreConundrumRound(
-      round.playerGuess,
-      round.aiSolved,
-      round.answer,
-      playerSubmittedFirst,
-    );
+    if (isLive) {
+      // Live mode: defer scoring until both players submit
+      dispatch({
+        type: 'SET_ROUND_RESULTS',
+        playerScore: 0,
+        aiScore: 0,
+        extras: { aiSolved: false, aiGuessTime: 0 },
+      });
+
+      if (liveData && !liveSubmitted.current) {
+        liveSubmitted.current = true;
+        submitLiveResult(liveData.code, liveData.playerId, {
+          roundIndex: state.currentRound,
+          roundType: 'conundrum',
+          answer: round.playerGuess,
+          score: 0,
+          timeRemaining: round.playerTimeRemaining,
+        });
+        dispatch({ type: 'LIVE_SET_WAITING', waiting: true });
+      }
+      return; // skip the rest — rescoring happens in separate effect
+    } else if (hasOpponent && opponentResult) {
+      // P2 challenge: head-to-head conundrum scoring
+      const playerCorrect = isConundrumCorrect(round.playerGuess, round.answer);
+      const oppCorrect = isConundrumCorrect(opponentResult.answer, round.answer);
+
+      if (playerCorrect && oppCorrect) {
+        const oppTimeRemaining = opponentResult.timeRemaining ?? 0;
+        if (round.playerTimeRemaining > oppTimeRemaining) {
+          playerScore = 10;
+        } else if (oppTimeRemaining > round.playerTimeRemaining) {
+          aiScore = 10;
+        } else {
+          playerScore = 10;
+          aiScore = 10;
+        }
+      } else if (playerCorrect) {
+        playerScore = 10;
+      } else if (oppCorrect) {
+        aiScore = 10;
+      }
+    } else {
+      // AI or P1 scoring
+      const playerElapsed = state.timerDuration - round.playerTimeRemaining;
+      const playerSubmittedFirst = round.playerGuess.length > 0 && (!round.aiSolved || playerElapsed < round.aiGuessTime);
+      const scores = scoreConundrumRound(round.playerGuess, round.aiSolved, round.answer, playerSubmittedFirst);
+      playerScore = scores.playerScore;
+      aiScore = scores.aiScore;
+    }
 
     dispatch({
       type: 'SET_ROUND_RESULTS',
-      playerScore: scores.playerScore,
-      aiScore: scores.aiScore,
+      playerScore,
+      aiScore,
       extras: { aiSolved: round.aiSolved, aiGuessTime: round.aiGuessTime },
     });
-  }, [revealed, round, state.timerDuration, dispatch]);
+  }, [revealed, round, state.timerDuration, state.mode, isLive, liveData, state.currentRound, hasOpponent, opponentResult, dispatch]);
+
+  // Live: rescore conundrum when opponent's result arrives
+  const rescored = useRef(false);
+  useEffect(() => {
+    if (!isLive || !liveOpponentResult || rescored.current) return;
+    rescored.current = true;
+
+    const playerCorrect = isConundrumCorrect(round.playerGuess, round.answer);
+    const oppCorrect = isConundrumCorrect(liveOpponentResult.answer, round.answer);
+
+    let pScore = 0;
+    let oScore = 0;
+    if (playerCorrect && oppCorrect) {
+      const oppTimeRemaining = liveOpponentResult.timeRemaining ?? 0;
+      if (round.playerTimeRemaining > oppTimeRemaining) {
+        pScore = 10;
+      } else if (oppTimeRemaining > round.playerTimeRemaining) {
+        oScore = 10;
+      } else {
+        pScore = 10;
+        oScore = 10;
+      }
+    } else if (playerCorrect) {
+      pScore = 10;
+    } else if (oppCorrect) {
+      oScore = 10;
+    }
+    dispatch({ type: 'LIVE_RESCORE_ROUND', playerScore: pScore, opponentScore: oScore });
+  }, [isLive, liveOpponentResult, round.playerGuess, round.playerTimeRemaining, round.answer, dispatch]);
 
   if (!revealed || state.phase !== 'reveal') return null;
 
-  const playerCorrect = round.playerGuess.toUpperCase() === round.answer.toUpperCase();
+  const playerCorrect = isConundrumCorrect(round.playerGuess, round.answer);
 
   return (
     <div className="flex flex-col items-center gap-6 animate-fade-in">
-      <h2 className="text-xl font-semibold text-[#fbbf24]">CONUNDRUM - Results</h2>
-
       {/* The answer */}
       <div className="bg-[#0a1628] border-2 border-[#fbbf24] rounded-xl px-8 py-4">
         <div className="text-sm text-[#fbbf24] mb-1">The answer</div>
@@ -59,28 +137,23 @@ export function ConundrumReveal() {
                 {playerCorrect ? 'Correct!' : 'Wrong'}
               </span>
             )}
-            <span className="text-2xl font-bold text-[#fbbf24]">+{round.playerScore}</span>
+            <span className="text-2xl font-bold text-[#fbbf24]">{isP1 || (isLive && !liveOpponentResult) ? '+?' : `+${round.playerScore}`}</span>
           </div>
         </div>
       </div>
 
       {/* AI result */}
-      {state.mode === 'fullgame' && (
+      {state.difficulty !== 'off' && (
         <div className="bg-[#1a2d50] rounded-xl p-4 w-full max-w-md">
           <div className="text-sm text-blue-400 mb-1">AI</div>
           <div className="flex items-center justify-between">
             <div>
               <span className="text-2xl font-bold text-white">
-                {round.aiSolved ? round.answer.toUpperCase() : '(did not solve)'}
+                {round.aiSolved ? round.answer.toUpperCase() : "Didn't buzz in"}
               </span>
               {round.aiSolved && (
                 <div className="text-xs text-blue-400 mt-1">
                   Buzzed in at {Math.round(round.aiGuessTime)}s
-                </div>
-              )}
-              {!round.aiSolved && (
-                <div className="text-xs text-blue-400/50 mt-1">
-                  Would have buzzed in at {Math.round(round.aiGuessTime)}s (wrong)
                 </div>
               )}
             </div>
@@ -89,10 +162,60 @@ export function ConundrumReveal() {
         </div>
       )}
 
+      {/* Challenger result */}
+      {hasOpponent && opponentResult && (() => {
+        const oppCorrect = isConundrumCorrect(opponentResult.answer, round.answer);
+        return (
+          <div className="bg-[#1a2d50] rounded-xl p-4 w-full max-w-md">
+            <div className="text-sm text-purple-400 mb-1">{opponentName}'s guess</div>
+            <div className="flex items-center justify-between">
+              <span className="text-2xl font-bold text-white">
+                {opponentResult.answer || '(no guess)'}
+              </span>
+              <div className="flex items-center gap-2">
+                {opponentResult.answer && (
+                  <span className={`text-sm ${oppCorrect ? 'text-green-400' : 'text-red-400'}`}>
+                    {oppCorrect ? 'Correct!' : 'Wrong'}
+                  </span>
+                )}
+                <span className="text-2xl font-bold text-[#fbbf24]">+{round.aiScore}</span>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Live opponent result */}
+      {isLive && liveOpponentResult && (() => {
+        const oppCorrect = isConundrumCorrect(liveOpponentResult.answer, round.answer);
+        return (
+          <div className="bg-[#1a2d50] rounded-xl p-4 w-full max-w-md">
+            <div className="text-sm text-emerald-400 mb-1">{liveData?.opponentName || 'Opponent'}'s guess</div>
+            <div className="flex items-center justify-between">
+              <span className="text-2xl font-bold text-white">
+                {liveOpponentResult.answer || '(no guess)'}
+              </span>
+              <div className="flex items-center gap-2">
+                {liveOpponentResult.answer && (
+                  <span className={`text-sm ${oppCorrect ? 'text-green-400' : 'text-red-400'}`}>
+                    {oppCorrect ? 'Correct!' : 'Wrong'}
+                  </span>
+                )}
+                <span className="text-2xl font-bold text-[#fbbf24]">+{round.aiScore}</span>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Waiting for live opponent */}
+      {isLive && !liveOpponentResult && <WaitingOverlay />}
+
       <Button
         variant="primary"
         size="lg"
         onClick={() => dispatch({ type: 'NEXT_ROUND' })}
+        disabled={isLive && !liveOpponentResult}
       >
         {state.mode === 'freeplay' ? 'Play Again' : 'See Final Scores'}
       </Button>

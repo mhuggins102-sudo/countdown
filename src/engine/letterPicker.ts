@@ -8,8 +8,8 @@ export interface LetterPool {
   vowelIndex: number;
 }
 
-export function createPool(): LetterPool {
-  const { consonants, vowels } = createLetterPool();
+export function createPool(rng?: () => number): LetterPool {
+  const { consonants, vowels } = createLetterPool(rng);
   return { consonants, vowels, consonantIndex: 0, vowelIndex: 0 };
 }
 
@@ -36,13 +36,13 @@ export function drawVowel(pool: LetterPool): { letter: string; pool: LetterPool 
   };
 }
 
-export function selectNumbers(largeCount: number): number[] {
+export function selectNumbers(largeCount: number, rng: () => number = Math.random): number[] {
   const largeNumbers = [25, 50, 75, 100];
   const smallNumbers = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10];
 
   // Shuffle both pools
-  const shuffledLarge = [...largeNumbers].sort(() => Math.random() - 0.5);
-  const shuffledSmall = [...smallNumbers].sort(() => Math.random() - 0.5);
+  const shuffledLarge = [...largeNumbers].sort(() => rng() - 0.5);
+  const shuffledSmall = [...smallNumbers].sort(() => rng() - 0.5);
 
   const selected: number[] = [];
   for (let i = 0; i < largeCount; i++) {
@@ -62,10 +62,10 @@ export interface NumberPool {
   smallIndex: number;
 }
 
-export function createNumberPool(): NumberPool {
-  const largeNumbers = [25, 50, 75, 100].sort(() => Math.random() - 0.5);
+export function createNumberPool(rng: () => number = Math.random): NumberPool {
+  const largeNumbers = [25, 50, 75, 100].sort(() => rng() - 0.5);
   const smallNumbers = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10]
-    .sort(() => Math.random() - 0.5);
+    .sort(() => rng() - 0.5);
   return { largeNumbers, smallNumbers, largeIndex: 0, smallIndex: 0 };
 }
 
@@ -99,8 +99,8 @@ export function aiPickNumberType(
   return 'small';
 }
 
-export function generateTarget(): number {
-  return Math.floor(Math.random() * 900) + 100; // 100-999
+export function generateTarget(rng: () => number = Math.random): number {
+  return Math.floor(rng() * 900) + 100; // 100-999
 }
 
 export function aiPickLetters(

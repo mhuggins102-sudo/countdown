@@ -10,7 +10,7 @@ export const VOWEL_DISTRIBUTION: Record<string, number> = {
   A: 15, E: 21, I: 13, O: 13, U: 5,
 };
 
-export function createLetterPool(): { consonants: string[]; vowels: string[] } {
+export function createLetterPool(rng: () => number = Math.random): { consonants: string[]; vowels: string[] } {
   const consonants: string[] = [];
   const vowels: string[] = [];
 
@@ -21,13 +21,13 @@ export function createLetterPool(): { consonants: string[]; vowels: string[] } {
     for (let i = 0; i < count; i++) vowels.push(letter);
   }
 
-  return { consonants: shuffle(consonants), vowels: shuffle(vowels) };
+  return { consonants: shuffle(consonants, rng), vowels: shuffle(vowels, rng) };
 }
 
-function shuffle<T>(array: T[]): T[] {
+function shuffle<T>(array: T[], rng: () => number): T[] {
   const arr = [...array];
   for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(rng() * (i + 1));
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
   return arr;

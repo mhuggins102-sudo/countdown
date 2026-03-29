@@ -8,7 +8,14 @@
   "assets": {
     "not_found_handling": "single-page-application"
   },
+  "main": "./src/api/challengeWorker.ts",
   "compatibility_flags": [
     "nodejs_compat"
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "CHALLENGES",
+      "id": "a84ee90d465e42b4a2c3241965cdcc3a"
+    }
   ]
 }

@@ -1,9 +1,11 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useGame } from '../../hooks/useGame';
 import { useTimer } from '../../hooks/useTimer';
 import { LetterTile } from '../shared/LetterTile';
 import { Timer } from '../shared/Timer';
 import { Button } from '../shared/Button';
+import { isValidWord, canFormWord } from '../../engine/wordValidator';
+import { submitPicks } from '../../api/liveApi';
 import type { LettersRoundState } from '../../types/game';
 
 export function LettersPlaying() {
@@ -11,15 +13,38 @@ export function LettersPlaying() {
   const round = state.currentRoundState as LettersRoundState;
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [submitted, setSubmitted] = useState(false);
+  const [shake, setShake] = useState(false);
+
+  // Live picker: submit picks to server on mount (picking just completed)
+  const isLivePicker = state.mode === 'live' && state.liveData &&
+    (state.liveData.isHost ? (state.currentRound % 2 === 0) : (state.currentRound % 2 === 1));
+  const picksSubmitted = useRef(false);
+  useEffect(() => {
+    if (isLivePicker && state.liveData && !picksSubmitted.current) {
+      picksSubmitted.current = true;
+      submitPicks(state.liveData.code, state.liveData.playerId, {
+        roundIndex: state.currentRound,
+        roundType: 'letters',
+        letters: round.letters,
+      });
+    }
+  }, [isLivePicker, state.liveData, state.currentRound, round.letters]);
 
   const currentWord = selectedIndices.map((i) => round.letters[i]).join('');
+  const wordValid = currentWord.length > 0
+    && isValidWord(currentWord)
+    && canFormWord(currentWord, round.letters);
 
   const handleSubmit = useCallback(() => {
-    if (currentWord.length > 0 && !submitted) {
-      setSubmitted(true);
-      dispatch({ type: 'SUBMIT_LETTERS_WORD', word: currentWord });
+    if (submitted) return;
+    if (!wordValid) {
+      setShake(true);
+      setTimeout(() => setShake(false), 400);
+      return;
     }
-  }, [currentWord, submitted, dispatch]);
+    setSubmitted(true);
+    dispatch({ type: 'SUBMIT_LETTERS_WORD', word: currentWord });
+  }, [currentWord, submitted, wordValid, dispatch]);
 
   // When submitted manually, wait briefly then transition to reveal
   useEffect(() => {
@@ -107,10 +132,16 @@ export function LettersPlaying() {
         <Button variant="secondary" size="sm" onClick={handleUndo} disabled={submitted || selectedIndices.length === 0}>
           Undo
         </Button>
-        <Button variant="gold" size="lg" onClick={handleSubmit} disabled={submitted || currentWord.length === 0}>
-          {submitted ? 'Submitted!' : 'Submit Word'}
-        </Button>
+        <div className={shake ? 'animate-shake' : ''}>
+          <Button variant="gold" size="lg" onClick={handleSubmit} disabled={submitted || currentWord.length === 0}>
+            {submitted ? 'Submitted!' : 'Submit Word'}
+          </Button>
+        </div>
       </div>
+
+      {!submitted && currentWord.length >= 2 && !wordValid && (
+        <p className="text-red-400/70 text-sm">Not a valid word</p>
+      )}
 
       {submitted && (
         <p className="text-blue-300 animate-fade-in">
