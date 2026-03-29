@@ -77,9 +77,9 @@ export function NumbersPicking() {
     }
   }, [isLiveReveal, round.numbers.length, livePicks, dispatch]);
 
-  // AI auto-picks numbers one at a time
+  // AI auto-picks numbers one at a time (skip in live P2 — waits for host picks)
   useEffect(() => {
-    if (!isChallengeReveal && !round.isPlayerPicking && round.numbers.length < 6) {
+    if (!isChallengeReveal && !isLiveP2 && !round.isPlayerPicking && round.numbers.length < 6) {
       const timer = setTimeout(() => {
         const choice = aiPickNumberType(
           round.numbers,

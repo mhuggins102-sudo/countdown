@@ -83,9 +83,9 @@ export function LettersPicking() {
     }
   }, [isLiveReveal, round.letters.length, livePicks, dispatch]);
 
-  // AI auto-picks letters when it's the AI's turn
+  // AI auto-picks letters when it's the AI's turn (skip in live P2 — waits for host picks)
   useEffect(() => {
-    if (!isChallengeReveal && !round.isPlayerPicking && round.letters.length < 9) {
+    if (!isChallengeReveal && !isLiveP2 && !round.isPlayerPicking && round.letters.length < 9) {
       const timer = setTimeout(() => {
         const choice = aiPickLetters(
           round.letters,
