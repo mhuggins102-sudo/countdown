@@ -292,7 +292,7 @@ async function handleLive(request: Request, url: URL, env: Env): Promise<Respons
     return json(record);
   }
 
-  // PUT /api/live/:code/picks — Submit picks for current round (P1 only)
+  // PUT /api/live/:code/picks — Submit picks for current round (either player, alternating)
   const picksMatch = url.pathname.match(/^\/api\/live\/([A-Z0-9]{6})\/picks$/);
   if (request.method === 'PUT' && picksMatch) {
     const code = picksMatch[1];
@@ -305,8 +305,8 @@ async function handleLive(request: Request, url: URL, env: Env): Promise<Respons
       picks: LiveRoundPicks;
     };
 
-    if (body.playerId !== record.p1Id) {
-      return json({ error: 'Only host can submit picks' }, 403);
+    if (body.playerId !== record.p1Id && body.playerId !== record.p2Id) {
+      return json({ error: 'Unknown player' }, 403);
     }
 
     // Add or replace picks for this round

@@ -32,36 +32,50 @@ export function NumbersReveal() {
       : null;
     const aiAnswer = aiResult?.answer ?? null;
 
-    // In challenge mode as P2, score head-to-head against P1's answer
-    const opponentAnswer = hasOpponent && opponentResult?.answer
-      ? Number(opponentResult.answer) || null
-      : aiAnswer;
-    const scores = scoreNumbersRound(round.playerAnswer, opponentAnswer, round.target);
-
-    dispatch({
-      type: 'SET_ROUND_RESULTS',
-      playerScore: scores.playerScore,
-      aiScore: isLive ? 0 : scores.aiScore,
-      extras: {
-        aiAnswer,
-        aiSteps: aiResult?.steps ?? [],
-        solution: steps,
-      },
-    });
-
-    // Submit result to server in live mode
-    if (isLive && liveData && !liveSubmitted.current) {
-      liveSubmitted.current = true;
-      submitLiveResult(liveData.code, liveData.playerId, {
-        roundIndex: state.currentRound,
-        roundType: 'numbers',
-        answer: String(round.playerAnswer ?? ''),
-        score: scores.playerScore,
-        steps: round.playerSteps,
+    if (isLive) {
+      // Live mode: defer scoring until both players submit
+      dispatch({
+        type: 'SET_ROUND_RESULTS',
+        playerScore: 0,
+        aiScore: 0,
+        extras: { aiAnswer: null, aiSteps: [], solution: steps },
       });
-      dispatch({ type: 'LIVE_SET_WAITING', waiting: true });
+
+      if (liveData && !liveSubmitted.current) {
+        liveSubmitted.current = true;
+        submitLiveResult(liveData.code, liveData.playerId, {
+          roundIndex: state.currentRound,
+          roundType: 'numbers',
+          answer: String(round.playerAnswer ?? ''),
+          score: 0,
+          steps: round.playerSteps,
+        });
+        dispatch({ type: 'LIVE_SET_WAITING', waiting: true });
+      }
+    } else {
+      const opponentAnswer = hasOpponent && opponentResult?.answer
+        ? Number(opponentResult.answer) || null
+        : aiAnswer;
+      const scores = scoreNumbersRound(round.playerAnswer, opponentAnswer, round.target);
+
+      dispatch({
+        type: 'SET_ROUND_RESULTS',
+        playerScore: scores.playerScore,
+        aiScore: scores.aiScore,
+        extras: { aiAnswer, aiSteps: aiResult?.steps ?? [], solution: steps },
+      });
     }
   }, [revealed, round, state.mode, state.difficulty, hasOpponent, opponentResult, isLive, liveData, state.currentRound, dispatch]);
+
+  // Live: rescore when opponent's result arrives
+  const rescored = useRef(false);
+  useEffect(() => {
+    if (!isLive || !liveOpponentResult || rescored.current) return;
+    rescored.current = true;
+    const oppAnswer = liveOpponentResult.answer ? Number(liveOpponentResult.answer) : null;
+    const scores = scoreNumbersRound(round.playerAnswer, oppAnswer, round.target);
+    dispatch({ type: 'LIVE_RESCORE_ROUND', playerScore: scores.playerScore, opponentScore: scores.aiScore });
+  }, [isLive, liveOpponentResult, round.playerAnswer, round.target, dispatch]);
 
   if (!revealed || state.phase !== 'reveal') return null;
 
@@ -73,8 +87,12 @@ export function NumbersReveal() {
   const oppAnswer = hasOpponent && opponentResult?.answer ? Number(opponentResult.answer) : null;
   const oppDist = oppAnswer !== null && !isNaN(oppAnswer) ? Math.abs(oppAnswer - round.target) : null;
 
+  // Live opponent distance
+  const liveOppAnswer = liveOpponentResult?.answer ? Number(liveOpponentResult.answer) : null;
+  const liveOppDist = liveOppAnswer !== null && !isNaN(liveOppAnswer) ? Math.abs(liveOppAnswer - round.target) : null;
+
   // Hide solution if anyone got exact
-  const anyoneExact = playerDist === 0 || aiDist === 0 || oppDist === 0;
+  const anyoneExact = playerDist === 0 || aiDist === 0 || oppDist === 0 || liveOppDist === 0;
 
   // Find closest achievable for solution display
   const lastStep = round.solution.length > 0 ? round.solution[round.solution.length - 1] : null;
@@ -106,7 +124,7 @@ export function NumbersReveal() {
               </span>
             )}
           </div>
-          <span className="text-2xl font-bold text-[#fbbf24]">{isP1 ? '+?' : `+${round.playerScore}`}</span>
+          <span className="text-2xl font-bold text-[#fbbf24]">{isP1 || (isLive && !liveOpponentResult) ? '+?' : `+${round.playerScore}`}</span>
         </div>
         {/* Show player's working */}
         {round.playerSteps.length > 0 && (

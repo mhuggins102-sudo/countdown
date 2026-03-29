@@ -31,33 +31,48 @@ export function LettersReveal() {
       : '';
     const bestWord = findLongestWord(round.letters);
 
-    // In challenge mode as P2, score head-to-head against P1's word
-    const opponentWord = hasOpponent && opponentResult ? opponentResult.answer : aiWord;
-    const scores = scoreLettersRound(round.playerWord, opponentWord, round.letters);
-
-    dispatch({
-      type: 'SET_ROUND_RESULTS',
-      playerScore: isLive ? scores.playerScore : scores.playerScore,
-      aiScore: isLive ? 0 : scores.aiScore,
-      extras: {
-        aiWord,
-        bestWord,
-        playerWordValid: scores.playerWordValid,
-      },
-    });
-
-    // Submit result to server in live mode
-    if (isLive && liveData && !liveSubmitted.current) {
-      liveSubmitted.current = true;
-      submitLiveResult(liveData.code, liveData.playerId, {
-        roundIndex: state.currentRound,
-        roundType: 'letters',
-        answer: round.playerWord,
-        score: scores.playerScore,
+    if (isLive) {
+      // Live mode: defer scoring until both players submit — use 0 as placeholder
+      dispatch({
+        type: 'SET_ROUND_RESULTS',
+        playerScore: 0,
+        aiScore: 0,
+        extras: { aiWord: '', bestWord, playerWordValid: isValidWord(round.playerWord) && canFormWord(round.playerWord, round.letters) },
       });
-      dispatch({ type: 'LIVE_SET_WAITING', waiting: true });
+
+      // Submit raw answer to server
+      if (liveData && !liveSubmitted.current) {
+        liveSubmitted.current = true;
+        submitLiveResult(liveData.code, liveData.playerId, {
+          roundIndex: state.currentRound,
+          roundType: 'letters',
+          answer: round.playerWord,
+          score: 0, // placeholder — rescored client-side when both results are in
+        });
+        dispatch({ type: 'LIVE_SET_WAITING', waiting: true });
+      }
+    } else {
+      // AI / Challenge mode: score immediately
+      const opponentWord = hasOpponent && opponentResult ? opponentResult.answer : aiWord;
+      const scores = scoreLettersRound(round.playerWord, opponentWord, round.letters);
+
+      dispatch({
+        type: 'SET_ROUND_RESULTS',
+        playerScore: scores.playerScore,
+        aiScore: scores.aiScore,
+        extras: { aiWord, bestWord, playerWordValid: scores.playerWordValid },
+      });
     }
   }, [revealed, round, state.mode, state.difficulty, hasOpponent, opponentResult, isLive, liveData, state.currentRound, dispatch]);
+
+  // Live: rescore when opponent's result arrives
+  const rescored = useRef(false);
+  useEffect(() => {
+    if (!isLive || !liveOpponentResult || rescored.current) return;
+    rescored.current = true;
+    const scores = scoreLettersRound(round.playerWord, liveOpponentResult.answer, round.letters);
+    dispatch({ type: 'LIVE_RESCORE_ROUND', playerScore: scores.playerScore, opponentScore: scores.aiScore });
+  }, [isLive, liveOpponentResult, round.playerWord, round.letters, dispatch]);
 
   if (!revealed || state.phase !== 'reveal') return null;
 
@@ -80,7 +95,7 @@ export function LettersReveal() {
                 {playerValid ? 'Valid' : 'Invalid'}
               </span>
             )}
-            <span className="text-2xl font-bold text-[#fbbf24]">{isP1 ? '+?' : `+${round.playerScore}`}</span>
+            <span className="text-2xl font-bold text-[#fbbf24]">{isP1 || (isLive && !liveOpponentResult) ? '+?' : `+${round.playerScore}`}</span>
           </div>
         </div>
       </div>

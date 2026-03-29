@@ -15,10 +15,12 @@ export function LettersPlaying() {
   const [submitted, setSubmitted] = useState(false);
   const [shake, setShake] = useState(false);
 
-  // Live host: submit picks to server on mount (picking just completed)
+  // Live picker: submit picks to server on mount (picking just completed)
+  const isLivePicker = state.mode === 'live' && state.liveData &&
+    (state.liveData.isHost ? (state.currentRound % 2 === 0) : (state.currentRound % 2 === 1));
   const picksSubmitted = useRef(false);
   useEffect(() => {
-    if (state.mode === 'live' && state.liveData?.isHost && !picksSubmitted.current) {
+    if (isLivePicker && state.liveData && !picksSubmitted.current) {
       picksSubmitted.current = true;
       submitPicks(state.liveData.code, state.liveData.playerId, {
         roundIndex: state.currentRound,
@@ -26,7 +28,7 @@ export function LettersPlaying() {
         letters: round.letters,
       });
     }
-  }, [state.mode, state.liveData, state.currentRound, round.letters]);
+  }, [isLivePicker, state.liveData, state.currentRound, round.letters]);
 
   const currentWord = selectedIndices.map((i) => round.letters[i]).join('');
   const wordValid = currentWord.length > 0

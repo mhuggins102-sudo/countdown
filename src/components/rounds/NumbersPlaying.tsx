@@ -27,10 +27,12 @@ export function NumbersPlaying() {
   const round = state.currentRoundState as NumbersRoundState;
   const [submitted, setSubmitted] = useState(false);
 
-  // Live host: submit picks to server on mount (picking just completed)
+  // Live picker: submit picks to server on mount (picking just completed)
+  const isLivePicker = state.mode === 'live' && state.liveData &&
+    (state.liveData.isHost ? (state.currentRound % 2 === 0) : (state.currentRound % 2 === 1));
   const picksSubmitted = useRef(false);
   useEffect(() => {
-    if (state.mode === 'live' && state.liveData?.isHost && !picksSubmitted.current) {
+    if (isLivePicker && state.liveData && !picksSubmitted.current) {
       picksSubmitted.current = true;
       submitPicks(state.liveData.code, state.liveData.playerId, {
         roundIndex: state.currentRound,
@@ -39,7 +41,7 @@ export function NumbersPlaying() {
         target: round.target,
       });
     }
-  }, [state.mode, state.liveData, state.currentRound, round.numbers, round.target]);
+  }, [isLivePicker, state.liveData, state.currentRound, round.numbers, round.target]);
 
   const [tiles, setTiles] = useState<Tile[]>(() =>
     round.numbers.map((n) => ({ value: n, isResult: false, isLarge: n >= 25 }))

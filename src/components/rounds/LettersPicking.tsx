@@ -15,10 +15,10 @@ export function LettersPicking() {
   const { hasOpponent, result: opponentResult } = useChallengeOpponent();
   const isChallengeReveal = hasOpponent && !!opponentResult?.letters?.length;
 
-  // Live mode P2: reveal letters from host's picks
-  const isLiveP2 = state.mode === 'live' && !state.liveData?.isHost;
+  // Live mode: waiting player reveals picks from the other player
+  const isLiveWaiting = state.mode === 'live' && !round.isPlayerPicking;
   const livePicks = state.liveData?.currentPicks;
-  const isLiveReveal = isLiveP2 && !!livePicks?.letters?.length;
+  const isLiveReveal = isLiveWaiting && !!livePicks?.letters?.length;
 
   const canPickVowel = round.vowelCount < 5 && round.letters.length < 9;
   const canPickConsonant = round.consonantCount < 6 && round.letters.length < 9;
@@ -69,9 +69,9 @@ export function LettersPicking() {
     }
   }, [isLiveReveal, round.letters.length, livePicks, dispatch]);
 
-  // AI auto-picks letters when it's the AI's turn (skip in live P2 — waits for host picks)
+  // AI auto-picks letters when it's the AI's turn (skip in live — waits for opponent picks)
   useEffect(() => {
-    if (!isChallengeReveal && !isLiveP2 && !round.isPlayerPicking && round.letters.length < 9) {
+    if (!isChallengeReveal && !isLiveWaiting && !round.isPlayerPicking && round.letters.length < 9) {
       const timer = setTimeout(() => {
         const choice = aiPickLetters(
           round.letters,
@@ -87,8 +87,8 @@ export function LettersPicking() {
 
   const heading = isChallengeReveal || isLiveReveal
     ? 'Revealing letters...'
-    : isLiveP2 && !livePicks
-      ? 'Waiting for host to pick...'
+    : isLiveWaiting && !livePicks
+      ? 'Waiting for opponent to pick...'
       : round.isPlayerPicking
         ? 'Pick your letters'
         : 'AI is picking letters...';

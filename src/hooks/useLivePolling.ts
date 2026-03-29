@@ -29,8 +29,9 @@ export function useLivePolling() {
         dispatch({ type: 'LIVE_OPPONENT_JOINED', opponentName: oppName });
       }
 
-      // Picks ready (for P2: detect when P1 has submitted picks for current round)
-      if (!liveData.isHost && !liveData.currentPicks) {
+      // Picks ready (for whichever player is NOT picking this round)
+      const isMyPickRound = liveData.isHost ? (state.currentRound % 2 === 0) : (state.currentRound % 2 === 1);
+      if (!isMyPickRound && !liveData.currentPicks) {
         const picks = room.picks.find((p) => p.roundIndex === state.currentRound);
         if (picks) {
           dispatch({ type: 'LIVE_PICKS_READY', picks });

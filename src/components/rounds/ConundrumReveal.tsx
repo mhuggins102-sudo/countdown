@@ -26,9 +26,26 @@ export function ConundrumReveal() {
     let aiScore = 0;
 
     if (isLive) {
-      // Live mode: score based on correctness (head-to-head scoring done when both results are in)
-      const playerCorrect = isConundrumCorrect(round.playerGuess, round.answer);
-      playerScore = playerCorrect ? 10 : 0;
+      // Live mode: defer scoring until both players submit
+      dispatch({
+        type: 'SET_ROUND_RESULTS',
+        playerScore: 0,
+        aiScore: 0,
+        extras: { aiSolved: false, aiGuessTime: 0 },
+      });
+
+      if (liveData && !liveSubmitted.current) {
+        liveSubmitted.current = true;
+        submitLiveResult(liveData.code, liveData.playerId, {
+          roundIndex: state.currentRound,
+          roundType: 'conundrum',
+          answer: round.playerGuess,
+          score: 0,
+          timeRemaining: round.playerTimeRemaining,
+        });
+        dispatch({ type: 'LIVE_SET_WAITING', waiting: true });
+      }
+      return; // skip the rest — rescoring happens in separate effect
     } else if (hasOpponent && opponentResult) {
       // P2 challenge: head-to-head conundrum scoring
       const playerCorrect = isConundrumCorrect(round.playerGuess, round.answer);
@@ -64,20 +81,36 @@ export function ConundrumReveal() {
       aiScore,
       extras: { aiSolved: round.aiSolved, aiGuessTime: round.aiGuessTime },
     });
-
-    // Submit result to server in live mode
-    if (isLive && liveData && !liveSubmitted.current) {
-      liveSubmitted.current = true;
-      submitLiveResult(liveData.code, liveData.playerId, {
-        roundIndex: state.currentRound,
-        roundType: 'conundrum',
-        answer: round.playerGuess,
-        score: playerScore,
-        timeRemaining: round.playerTimeRemaining,
-      });
-      dispatch({ type: 'LIVE_SET_WAITING', waiting: true });
-    }
   }, [revealed, round, state.timerDuration, state.mode, isLive, liveData, state.currentRound, hasOpponent, opponentResult, dispatch]);
+
+  // Live: rescore conundrum when opponent's result arrives
+  const rescored = useRef(false);
+  useEffect(() => {
+    if (!isLive || !liveOpponentResult || rescored.current) return;
+    rescored.current = true;
+
+    const playerCorrect = isConundrumCorrect(round.playerGuess, round.answer);
+    const oppCorrect = isConundrumCorrect(liveOpponentResult.answer, round.answer);
+
+    let pScore = 0;
+    let oScore = 0;
+    if (playerCorrect && oppCorrect) {
+      const oppTimeRemaining = liveOpponentResult.timeRemaining ?? 0;
+      if (round.playerTimeRemaining > oppTimeRemaining) {
+        pScore = 10;
+      } else if (oppTimeRemaining > round.playerTimeRemaining) {
+        oScore = 10;
+      } else {
+        pScore = 10;
+        oScore = 10;
+      }
+    } else if (playerCorrect) {
+      pScore = 10;
+    } else if (oppCorrect) {
+      oScore = 10;
+    }
+    dispatch({ type: 'LIVE_RESCORE_ROUND', playerScore: pScore, opponentScore: oScore });
+  }, [isLive, liveOpponentResult, round.playerGuess, round.playerTimeRemaining, round.answer, dispatch]);
 
   if (!revealed || state.phase !== 'reveal') return null;
 
@@ -104,7 +137,7 @@ export function ConundrumReveal() {
                 {playerCorrect ? 'Correct!' : 'Wrong'}
               </span>
             )}
-            <span className="text-2xl font-bold text-[#fbbf24]">{isP1 ? '+?' : `+${round.playerScore}`}</span>
+            <span className="text-2xl font-bold text-[#fbbf24]">{isP1 || (isLive && !liveOpponentResult) ? '+?' : `+${round.playerScore}`}</span>
           </div>
         </div>
       </div>

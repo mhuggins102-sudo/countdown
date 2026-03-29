@@ -48,7 +48,8 @@ export type GameAction =
   | { type: 'LIVE_PICKS_READY'; picks: LiveRoundPicks }
   | { type: 'LIVE_OPPONENT_SUBMITTED'; result: LiveRoundSubmission; opponentTotalScore: number }
   | { type: 'LIVE_SET_WAITING'; waiting: boolean }
-  | { type: 'LIVE_UPDATE_HEARTBEAT'; opponentLastSeen: number };
+  | { type: 'LIVE_UPDATE_HEARTBEAT'; opponentLastSeen: number }
+  | { type: 'LIVE_RESCORE_ROUND'; playerScore: number; opponentScore: number };
 
 export const initialState: GameState = {
   mode: 'freeplay',
@@ -504,10 +505,11 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         : undefined;
 
       let baseRound = createRoundState(roundType, nextRound, state.difficulty === 'off', rng);
-      // Live P2: disable player picking (will wait for host's picks)
-      if (state.mode === 'live' && state.liveData && !state.liveData.isHost) {
+      // Live mode: alternate who picks — host picks even rounds, guest picks odd
+      if (state.mode === 'live' && state.liveData) {
+        const isMyPickRound = state.liveData.isHost ? (nextRound % 2 === 0) : (nextRound % 2 === 1);
         if (baseRound.type === 'letters' || baseRound.type === 'numbers') {
-          baseRound = { ...baseRound, isPlayerPicking: false };
+          baseRound = { ...baseRound, isPlayerPicking: isMyPickRound };
         }
       }
       const isP2 = state.mode === 'challenge' && !!state.challengeData?.opponentResults?.length;
@@ -724,6 +726,28 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           ...state.liveData,
           opponentLastSeen: action.opponentLastSeen,
         },
+      };
+    }
+
+    case 'LIVE_RESCORE_ROUND': {
+      if (!state.currentRoundState) return state;
+      // Replace the placeholder 0-score with real head-to-head scores
+      const prevPlayerScore = state.currentRoundState.playerScore;
+      const updatedRound = {
+        ...state.currentRoundState,
+        playerScore: action.playerScore,
+        aiScore: action.opponentScore,
+      } as typeof state.currentRoundState;
+      // Update the last entry in rounds array too
+      const updatedRounds = [...state.rounds];
+      if (updatedRounds.length > 0) {
+        updatedRounds[updatedRounds.length - 1] = updatedRound;
+      }
+      return {
+        ...state,
+        playerTotalScore: state.playerTotalScore - prevPlayerScore + action.playerScore,
+        currentRoundState: updatedRound,
+        rounds: updatedRounds,
       };
     }
 

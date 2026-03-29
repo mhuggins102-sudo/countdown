@@ -15,10 +15,10 @@ export function NumbersPicking() {
   const { hasOpponent, result: opponentResult } = useChallengeOpponent();
   const isChallengeReveal = hasOpponent && !!opponentResult?.numbers?.length;
 
-  // Live mode P2: reveal numbers from host's picks
-  const isLiveP2 = state.mode === 'live' && !state.liveData?.isHost;
+  // Live mode: waiting player reveals picks from the other player
+  const isLiveWaiting = state.mode === 'live' && !round.isPlayerPicking;
   const livePicks = state.liveData?.currentPicks;
-  const isLiveReveal = isLiveP2 && !!livePicks?.numbers?.length;
+  const isLiveReveal = isLiveWaiting && !!livePicks?.numbers?.length;
 
   const canPickLarge = round.largeCount < 4 && round.numbers.length < 6;
   const canPickSmall = round.numbers.length < 6;
@@ -62,9 +62,9 @@ export function NumbersPicking() {
     }
   }, [isLiveReveal, round.numbers.length, livePicks, dispatch]);
 
-  // AI auto-picks numbers one at a time (skip in live P2 — waits for host picks)
+  // AI auto-picks numbers one at a time (skip in live — waits for opponent picks)
   useEffect(() => {
-    if (!isChallengeReveal && !isLiveP2 && !round.isPlayerPicking && round.numbers.length < 6) {
+    if (!isChallengeReveal && !isLiveWaiting && !round.isPlayerPicking && round.numbers.length < 6) {
       const timer = setTimeout(() => {
         const choice = aiPickNumberType(
           round.numbers,
@@ -80,8 +80,8 @@ export function NumbersPicking() {
 
   const heading = isChallengeReveal || isLiveReveal
     ? 'Revealing numbers...'
-    : isLiveP2 && !livePicks
-      ? 'Waiting for host to pick...'
+    : isLiveWaiting && !livePicks
+      ? 'Waiting for opponent to pick...'
       : round.isPlayerPicking
         ? 'Pick your numbers'
         : 'AI is picking numbers...';
